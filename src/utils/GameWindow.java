@@ -1,4 +1,4 @@
-package src.entity;
+package src.utils;
 
 import javax.swing.*;
 import java.awt.*;

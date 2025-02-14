@@ -1,16 +1,14 @@
 package src.main;
 
-import src.entity.GameWindow;
+import src.utils.GameWindow;
 import src.entity.Player;
 import src.entity.Enemy;
 import src.entity.Pellet;
+import src.utils.Renderer;
+import src.utils.InputHandler;
+import src.utils.GameLoop;
 
 import java.awt.*;
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseMotionListener;
-import java.awt.image.BufferStrategy;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -18,10 +16,11 @@ import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
 
-public class Game extends Canvas implements Runnable, KeyListener, MouseMotionListener {
+public class Game extends Canvas {
     private GameWindow window;
-    private boolean running = false;
-    private Thread thread;
+    private GameLoop gameLoop;
+    private Renderer renderer;
+    private InputHandler inputHandler;
 
     private final int WINDOW_WIDTH;
     private final int WINDOW_HEIGHT;
@@ -64,10 +63,6 @@ public class Game extends Canvas implements Runnable, KeyListener, MouseMotionLi
         window = new GameWindow("Dungeon Crawler", WINDOW_WIDTH, WINDOW_HEIGHT, this);
         initialWindowLocation = window.getLocation();
 
-        addKeyListener(this);
-        addMouseMotionListener(this);
-        setFocusable(true);
-
         cameraX = roomCol * roomWidth;
         cameraY = roomRow * roomHeight;
 
@@ -76,6 +71,14 @@ public class Game extends Canvas implements Runnable, KeyListener, MouseMotionLi
         pellets = new ArrayList<>();
         enemies = new ArrayList<>();
         random = new Random();
+
+        renderer = new Renderer(this, roomWidth, roomHeight);
+        inputHandler = new InputHandler(this);
+        gameLoop = new GameLoop(this);
+
+        addKeyListener(inputHandler);
+        addMouseMotionListener(inputHandler);
+        setFocusable(true);
 
         startEnemySpawnTimer();
     }
@@ -100,42 +103,15 @@ public class Game extends Canvas implements Runnable, KeyListener, MouseMotionLi
         enemies.add(new Enemy(spawnX, spawnY, 100, Color.GREEN));
     }
 
-    public synchronized void start() {
-        running = true;
-        thread = new Thread(this, "Game Thread");
-        thread.start();
+    public void start() {
+        gameLoop.start();
     }
 
-    public synchronized void stop() {
-        running = false;
-        try {
-            thread.join();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+    public void stop() {
+        gameLoop.stop();
     }
 
-    @Override
-    public void run() {
-        long lastTime = System.nanoTime();
-        final double nsPerTick = 1_000_000_000.0 / 60.0;
-        double delta = 0;
-
-        while (running) {
-            long now = System.nanoTime();
-            delta += (now - lastTime) / nsPerTick;
-            lastTime = now;
-
-            while (delta >= 1) {
-                tick();
-                delta--;
-            }
-
-            render();
-        }
-    }
-
-    private void tick() {
+    public void tick() {
         if (!transitioning) {
             player.move(upPressed, downPressed, leftPressed, rightPressed);
         }
@@ -275,102 +251,44 @@ public class Game extends Canvas implements Runnable, KeyListener, MouseMotionLi
         player.applyKnockback(knockbackX, knockbackY);
     }
 
-    private void render() {
-        BufferStrategy bs = getBufferStrategy();
-        if (bs == null) {
-            createBufferStrategy(3);
-            return;
-        }
-        Graphics g = bs.getDrawGraphics();
-
-        g.setColor(Color.BLACK);
-        g.fillRect(0, 0, getWidth(), getHeight());
-
-        Graphics2D g2d = (Graphics2D) g;
-        g2d.translate(-cameraX, -cameraY);
-
-        renderRoom(g2d, roomCol, roomRow);
-        renderRoom(g2d, roomCol - 1, roomRow);
-        renderRoom(g2d, roomCol + 1, roomRow);
-        renderRoom(g2d, roomCol, roomRow - 1);
-        renderRoom(g2d, roomCol, roomRow + 1);
-
-        g.setColor(Color.RED);
-        g.fillRect((int) player.getX() - 10, (int) player.getY() - 10, 20, 20);
-
-        g.setColor(Color.BLUE);
-        g.fillRect((int) player.getGunX() - 5, (int) player.getGunY() - 5, 10, 10);
-
-        // Render enemies
-        for (Enemy enemy : enemies) {
-            enemy.render(g);
-        }
-
-        // Render pellets
-        for (Pellet pellet : pellets) {
-            pellet.render(g);
-        }
-
-        g2d.translate(cameraX, cameraY);
-
-        g.dispose();
-        bs.show();
+    public void render() {
+        renderer.render(player, enemies, pellets);
     }
 
-    private void renderRoom(Graphics g, int col, int row) {
-        int roomX = col * roomWidth;
-        int roomY = row * roomHeight;
-        g.setColor(new Color(30, 30, 30));
-        g.fillRect(roomX, roomY, roomWidth, roomHeight);
-        g.setColor(Color.GRAY);
-        g.drawRect(roomX, roomY, roomWidth, roomHeight);
+    public int getRoomCol() {
+        return roomCol;
     }
 
-    @Override
-    public void keyPressed(KeyEvent e) {
-        int key = e.getKeyCode();
-        if (key == KeyEvent.VK_W)
-            upPressed = true;
-        if (key == KeyEvent.VK_S)
-            downPressed = true;
-        if (key == KeyEvent.VK_A)
-            leftPressed = true;
-        if (key == KeyEvent.VK_D)
-            rightPressed = true;
-        if (key == KeyEvent.VK_SPACE) {
-            shooting = true;
-        }
+    public int getRoomRow() {
+        return roomRow;
     }
 
-    @Override
-    public void keyReleased(KeyEvent e) {
-        int key = e.getKeyCode();
-        if (key == KeyEvent.VK_W)
-            upPressed = false;
-        if (key == KeyEvent.VK_S)
-            downPressed = false;
-        if (key == KeyEvent.VK_A)
-            leftPressed = false;
-        if (key == KeyEvent.VK_D)
-            rightPressed = false;
-        if (key == KeyEvent.VK_SPACE) {
-            shooting = false;
-        }
+    public double getCameraX() {
+        return cameraX;
     }
 
-    @Override
-    public void keyTyped(KeyEvent e) {
-        // Not used.
+    public double getCameraY() {
+        return cameraY;
     }
 
-    @Override
-    public void mouseMoved(MouseEvent e) {
-        // Not used.
+    public void setUpPressed(boolean upPressed) {
+        this.upPressed = upPressed;
     }
 
-    @Override
-    public void mouseDragged(MouseEvent e) {
-        // Not used.
+    public void setDownPressed(boolean downPressed) {
+        this.downPressed = downPressed;
+    }
+
+    public void setLeftPressed(boolean leftPressed) {
+        this.leftPressed = leftPressed;
+    }
+
+    public void setRightPressed(boolean rightPressed) {
+        this.rightPressed = rightPressed;
+    }
+
+    public void setShooting(boolean shooting) {
+        this.shooting = shooting;
     }
 
     public static void main(String[] args) {
