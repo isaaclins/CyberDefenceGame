@@ -41,7 +41,7 @@ public class Game extends Canvas {
     private boolean upPressed, downPressed, leftPressed, rightPressed;
     private boolean shooting = false;
     private long lastShotTime = 0;
-    private final long shotCooldown = 100; // 500 milliseconds cooldown
+    private final long shotCooldown = 25; // 500 milliseconds cooldown
     private final double knockbackstrength = 0.2;
     private double mouseX, mouseY;
 
