@@ -49,7 +49,7 @@ public class Player {
 
     public void smoothGunTransition() {
         double angleDifference = targetGunAngle - gunAngle;
-        angleDifference = Math.atan2(Math.sin(angleDifference), Math.cos(angleDifference)); // Normalize angle difference
+        angleDifference = Math.atan2(Math.sin(angleDifference), Math.cos(angleDifference));
         gunAngle += angleDifference * gunFriction;
         updateGunPosition();
     }

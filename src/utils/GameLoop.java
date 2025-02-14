@@ -1,12 +1,11 @@
 package src.utils;
 
-import src.main.Game;
 public class GameLoop implements Runnable {
-    private final Game game;
+    private final src.main.Game game;
     private boolean running = false;
     private Thread thread;
 
-    public GameLoop(Game game) {
+    public GameLoop(src.main.Game game) {
         this.game = game;
     }
 
@@ -40,7 +39,6 @@ public class GameLoop implements Runnable {
                 game.tick();
                 delta--;
             }
-
             game.render();
         }
     }

@@ -27,7 +27,6 @@ public class Enemy {
     public void move() {
         x += velocityX;
         y += velocityY;
-
         velocityX *= friction;
         velocityY *= friction;
     }
@@ -54,7 +53,6 @@ public class Enemy {
         g2d.setColor(color);
         g2d.fillRect(-10, -10, 20, 20);
 
-        // Optionally, you can draw a line to indicate the facing direction
         g2d.setColor(Color.RED);
         g2d.drawLine(0, 0, 20, 0);
 

@@ -1,20 +1,25 @@
 package src.main;
 
-import src.utils.GameWindow;
 import src.entity.Player;
 import src.entity.Enemy;
 import src.entity.Pellet;
+import src.utils.GameWindow;
 import src.utils.Renderer;
 import src.utils.InputHandler;
 import src.utils.GameLoop;
+import src.utils.RoomWindow;
 
 import java.awt.*;
+import java.awt.image.BufferStrategy;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.stream.Collectors;
 
 public class Game extends Canvas {
     private GameWindow window;
@@ -41,7 +46,7 @@ public class Game extends Canvas {
     private boolean upPressed, downPressed, leftPressed, rightPressed;
     private boolean shooting = false;
     private long lastShotTime = 0;
-    private final long shotCooldown = 25; // 25 milliseconds cooldown
+    private final long shotCooldown = 25; // milliseconds
     private final double knockbackstrength = 0.2;
     private double mouseX, mouseY;
 
@@ -49,6 +54,9 @@ public class Game extends Canvas {
     private List<Enemy> enemies;
     private Timer enemySpawnTimer;
     private Random random;
+
+    // Map for additional room windows (rooms other than player's)
+    private Map<String, RoomWindow> roomWindows;
 
     public Game() {
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
@@ -80,6 +88,8 @@ public class Game extends Canvas {
         addMouseMotionListener(inputHandler);
         setFocusable(true);
 
+        roomWindows = new HashMap<>();
+
         startEnemySpawnTimer();
     }
 
@@ -92,13 +102,13 @@ public class Game extends Canvas {
                     spawnEnemyNearPlayer();
                 }
             }
-        }, 0, (2 + random.nextInt(4)) * 1000); // 2-5 seconds
+        }, 0, (2 + random.nextInt(4)) * 1000); // every 2-5 seconds
     }
 
     private void spawnEnemyNearPlayer() {
         double playerX = player.getX();
         double playerY = player.getY();
-        double spawnX = playerX + (random.nextDouble() * 200 - 100); // Random position within 100 units of the player
+        double spawnX = playerX + (random.nextDouble() * 200 - 100);
         double spawnY = playerY + (random.nextDouble() * 200 - 100);
         enemies.add(new Enemy(spawnX, spawnY, 100, Color.GREEN));
     }
@@ -152,15 +162,13 @@ public class Game extends Canvas {
             window.setLocation(newWindowX, newWindowY);
         }
 
-        // Update gun angle based on the nearest enemy or spin if no enemies are present
+        // Update the player’s gun angle
         Enemy nearestEnemy = getNearestEnemy();
         if (nearestEnemy != null) {
             player.updateGunAngle(nearestEnemy.getX(), nearestEnemy.getY());
         } else {
             player.spinGun();
         }
-
-        // Smoothly transition the gun angle
         player.smoothGunTransition();
 
         // Handle shooting
@@ -169,13 +177,12 @@ public class Game extends Canvas {
             lastShotTime = System.currentTimeMillis();
         }
 
-        // Move pellets and handle collision with enemies
+        // Move pellets and handle collisions with enemies
         Iterator<Pellet> pelletIterator = pellets.iterator();
         while (pelletIterator.hasNext()) {
             Pellet pellet = pelletIterator.next();
             pellet.move();
 
-            // Check collision with enemies
             boolean pelletRemoved = false;
             for (Enemy enemy : enemies) {
                 if (checkCollision(pellet, enemy)) {
@@ -185,15 +192,13 @@ public class Game extends Canvas {
                     break;
                 }
             }
-
-            // Remove pellets that are out of bounds
-            if (!pelletRemoved && (pellet.getX() < 0 || pellet.getX() > roomWidth * 3 || pellet.getY() < 0
-                    || pellet.getY() > roomHeight * 3)) {
+            if (!pelletRemoved && (pellet.getX() < 0 || pellet.getX() > roomWidth * 3 ||
+                    pellet.getY() < 0 || pellet.getY() > roomHeight * 3)) {
                 pelletIterator.remove();
             }
         }
 
-        // Move enemies towards the player and update their facing angle
+        // Move enemies toward the player and update their facing angle
         for (Enemy enemy : enemies) {
             enemy.moveToPlayer(playerX, playerY);
             enemy.move();
@@ -205,6 +210,25 @@ public class Game extends Canvas {
                 applyKnockbackToPlayer(enemy);
             }
         }
+
+        // For each enemy in a room different from the player's, ensure a RoomWindow exists.
+        for (Enemy enemy : enemies) {
+            int eCol = (int) (enemy.getX() / roomWidth);
+            int eRow = (int) (enemy.getY() / roomHeight);
+            if (eCol != roomCol || eRow != roomRow) {
+                String key = eCol + "," + eRow;
+                if (!roomWindows.containsKey(key)) {
+                    RoomWindow rw = new RoomWindow(eCol, eRow, WINDOW_WIDTH, WINDOW_HEIGHT, initialWindowLocation);
+                    roomWindows.put(key, rw);
+                }
+            }
+        }
+        // Update window locations (in case room indices shift)
+        for (RoomWindow rw : roomWindows.values()) {
+
+            rw.updateLocation(initialWindowLocation);
+        }
+
     }
 
     private void shoot() {
@@ -217,7 +241,6 @@ public class Game extends Canvas {
     private Enemy getNearestEnemy() {
         Enemy nearestEnemy = null;
         double nearestDistance = Double.MAX_VALUE;
-
         for (Enemy enemy : enemies) {
             double distance = Math.hypot(player.getX() - enemy.getX(), player.getY() - enemy.getY());
             if (distance < nearestDistance) {
@@ -225,18 +248,17 @@ public class Game extends Canvas {
                 nearestEnemy = enemy;
             }
         }
-
         return nearestEnemy;
     }
 
     private boolean checkCollision(Pellet pellet, Enemy enemy) {
         double distance = Math.hypot(pellet.getX() - enemy.getX(), pellet.getY() - enemy.getY());
-        return distance < 15; // Assuming 15 is the collision radius
+        return distance < 15;
     }
 
     private boolean checkCollision(Player player, Enemy enemy) {
         double distance = Math.hypot(player.getX() - enemy.getX(), player.getY() - enemy.getY());
-        return distance < 20; // Assuming 20 is the collision radius for player and enemy
+        return distance < 20;
     }
 
     private void applyKnockback(Enemy enemy, Pellet pellet) {
@@ -246,13 +268,48 @@ public class Game extends Canvas {
     }
 
     private void applyKnockbackToPlayer(Enemy enemy) {
-        double knockbackX = (player.getX() - enemy.getX()) * 2.0; // Strong knockback
-        double knockbackY = (player.getY() - enemy.getY()) * 2.0; // Strong knockback
+        double knockbackX = (player.getX() - enemy.getX()) * 2.0;
+        double knockbackY = (player.getY() - enemy.getY()) * 2.0;
         player.applyKnockback(knockbackX, knockbackY);
     }
 
     public void render() {
+        BufferStrategy bs = getBufferStrategy();
+        if (bs == null) {
+            createBufferStrategy(3);
+            return;
+        }
+        Graphics g = bs.getDrawGraphics();
+
+        // Clear and render main (player) window
+        g.setColor(Color.BLACK);
+        g.fillRect(0, 0, getWidth(), getHeight());
+        Graphics2D g2d = (Graphics2D) g;
+        g2d.translate(-cameraX, -cameraY);
         renderer.render(player, enemies, pellets);
+        g2d.translate(cameraX, cameraY);
+        g.dispose();
+        bs.show();
+
+        // Now render each additional room window (filtering entities to those in that room)
+        for (RoomWindow rw : roomWindows.values()) {
+            // Filter enemies and pellets for this room
+            List<Enemy> roomEnemies = enemies.stream().filter(e -> {
+                int col = (int) (e.getX() / roomWidth);
+                int row = (int) (e.getY() / roomHeight);
+                return col == rw.getRoomCol() && row == rw.getRoomRow();
+            }).collect(Collectors.toList());
+            List<Pellet> roomPellets = pellets.stream().filter(p -> {
+                int col = (int) (p.getX() / roomWidth);
+                int row = (int) (p.getY() / roomHeight);
+                return col == rw.getRoomCol() && row == rw.getRoomRow();
+            }).collect(Collectors.toList());
+            // (Player is only in the main room.)
+            rw.render(roomEnemies, roomPellets, null);
+        }
+        // At the end of your render() method in Game.java
+        this.requestFocus();
+
     }
 
     public int getRoomCol() {
@@ -289,6 +346,10 @@ public class Game extends Canvas {
 
     public void setShooting(boolean shooting) {
         this.shooting = shooting;
+    }
+
+    public BufferStrategy getBufferStrategy() {
+        return super.getBufferStrategy();
     }
 
     public static void main(String[] args) {
