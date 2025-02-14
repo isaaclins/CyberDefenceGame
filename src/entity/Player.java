@@ -8,6 +8,7 @@ public class Player {
     private double gunX, gunY;
     private double gunAngle;
     private final double gunRadius = 20.0;
+    private final double spinSpeed = 0.1;
 
     public Player(double startX, double startY) {
         this.x = startX;
@@ -16,10 +17,14 @@ public class Player {
     }
 
     public void move(boolean upPressed, boolean downPressed, boolean leftPressed, boolean rightPressed) {
-        if (upPressed) velocityY -= acceleration;
-        if (downPressed) velocityY += acceleration;
-        if (leftPressed) velocityX -= acceleration;
-        if (rightPressed) velocityX += acceleration;
+        if (upPressed)
+            velocityY -= acceleration;
+        if (downPressed)
+            velocityY += acceleration;
+        if (leftPressed)
+            velocityX -= acceleration;
+        if (rightPressed)
+            velocityX += acceleration;
 
         x += velocityX;
         y += velocityY;
@@ -34,8 +39,13 @@ public class Player {
         gunY = y + gunRadius * Math.sin(gunAngle);
     }
 
-    public void updateGunAngle(double mouseX, double mouseY) {
-        gunAngle = Math.atan2(mouseY - y, mouseX - x);
+    public void updateGunAngle(double targetX, double targetY) {
+        gunAngle = Math.atan2(targetY - y, targetX - x);
+        updateGunPosition();
+    }
+
+    public void spinGun() {
+        gunAngle += spinSpeed;
         updateGunPosition();
     }
 

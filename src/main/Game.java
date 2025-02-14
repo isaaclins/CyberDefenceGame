@@ -2,6 +2,8 @@ package src.main;
 
 import src.entity.GameWindow;
 import src.entity.Player;
+import src.entity.Enemy;
+import src.entity.Pellet;
 
 import java.awt.*;
 import java.awt.event.KeyEvent;
@@ -9,6 +11,9 @@ import java.awt.event.KeyListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionListener;
 import java.awt.image.BufferStrategy;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 
 public class Game extends Canvas implements Runnable, KeyListener, MouseMotionListener {
     private GameWindow window;
@@ -22,6 +27,8 @@ public class Game extends Canvas implements Runnable, KeyListener, MouseMotionLi
 
     private Player player;
 
+    private Enemy enemy1, enemy2;
+
     private final int roomWidth, roomHeight;
     private int roomCol = 0, roomRow = 0;
 
@@ -32,6 +39,13 @@ public class Game extends Canvas implements Runnable, KeyListener, MouseMotionLi
     private double targetCameraX, targetCameraY;
 
     private boolean upPressed, downPressed, leftPressed, rightPressed;
+    private boolean shooting = false;
+    private long lastShotTime = 0;
+    private final long shotCooldown = 50; // 500 milliseconds cooldown
+
+    private double mouseX, mouseY;
+
+    private List<Pellet> pellets;
 
     public Game() {
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
@@ -54,6 +68,10 @@ public class Game extends Canvas implements Runnable, KeyListener, MouseMotionLi
         cameraY = roomRow * roomHeight;
 
         player = new Player(cameraX + 100, cameraY + 100);
+        enemy1 = new Enemy(cameraX + 200, cameraY + 200, 100, Color.GREEN);
+        enemy2 = new Enemy(cameraX + 300, cameraY + 300, 100, Color.ORANGE);
+
+        pellets = new ArrayList<>();
     }
 
     public synchronized void start() {
@@ -131,6 +149,80 @@ public class Game extends Canvas implements Runnable, KeyListener, MouseMotionLi
             int newWindowY = initialWindowLocation.y + roomRow * WINDOW_HEIGHT;
             window.setLocation(newWindowX, newWindowY);
         }
+
+        // Update gun angle based on the nearest enemy or spin if no enemies are present
+        Enemy nearestEnemy = getNearestEnemy();
+        if (nearestEnemy != null) {
+            player.updateGunAngle(nearestEnemy.getX(), nearestEnemy.getY());
+        } else {
+            player.spinGun();
+        }
+
+        // Handle shooting
+        if (shooting && System.currentTimeMillis() - lastShotTime >= shotCooldown) {
+            shoot();
+            lastShotTime = System.currentTimeMillis();
+        }
+
+        // Move pellets and handle collision with enemies
+        Iterator<Pellet> pelletIterator = pellets.iterator();
+        while (pelletIterator.hasNext()) {
+            Pellet pellet = pelletIterator.next();
+            pellet.move();
+
+            // Check collision with enemies
+            if (checkCollision(pellet, enemy1)) {
+                applyKnockback(enemy1, pellet);
+                pelletIterator.remove();
+            } else if (checkCollision(pellet, enemy2)) {
+                applyKnockback(enemy2, pellet);
+                pelletIterator.remove();
+            }
+
+            // Remove pellets that are out of bounds
+            if (pellet.getX() < 0 || pellet.getX() > roomWidth * 3 || pellet.getY() < 0
+                    || pellet.getY() > roomHeight * 3) {
+                pelletIterator.remove();
+            }
+        }
+
+        // Move enemies
+        enemy1.move();
+        enemy2.move();
+    }
+
+    private void shoot() {
+        Enemy nearestEnemy = getNearestEnemy();
+        if (nearestEnemy != null) {
+            pellets.add(new Pellet(player.getGunX(), player.getGunY(), nearestEnemy.getX(), nearestEnemy.getY()));
+        }
+    }
+
+    private Enemy getNearestEnemy() {
+        Enemy[] enemies = { enemy1, enemy2 };
+        Enemy nearestEnemy = null;
+        double nearestDistance = Double.MAX_VALUE;
+
+        for (Enemy enemy : enemies) {
+            double distance = Math.hypot(player.getX() - enemy.getX(), player.getY() - enemy.getY());
+            if (distance < nearestDistance) {
+                nearestDistance = distance;
+                nearestEnemy = enemy;
+            }
+        }
+
+        return nearestEnemy;
+    }
+
+    private boolean checkCollision(Pellet pellet, Enemy enemy) {
+        double distance = Math.hypot(pellet.getX() - enemy.getX(), pellet.getY() - enemy.getY());
+        return distance < 15; // Assuming 15 is the collision radius
+    }
+
+    private void applyKnockback(Enemy enemy, Pellet pellet) {
+        double knockbackX = (enemy.getX() - pellet.getX()) * 0.1;
+        double knockbackY = (enemy.getY() - pellet.getY()) * 0.1;
+        enemy.applyKnockback(knockbackX, knockbackY);
     }
 
     private void render() {
@@ -158,6 +250,13 @@ public class Game extends Canvas implements Runnable, KeyListener, MouseMotionLi
 
         g.setColor(Color.BLUE);
         g.fillRect((int) player.getGunX() - 5, (int) player.getGunY() - 5, 10, 10);
+        enemy1.render(g);
+        enemy2.render(g);
+
+        // Render pellets
+        for (Pellet pellet : pellets) {
+            pellet.render(g);
+        }
 
         g2d.translate(cameraX, cameraY);
 
@@ -177,19 +276,33 @@ public class Game extends Canvas implements Runnable, KeyListener, MouseMotionLi
     @Override
     public void keyPressed(KeyEvent e) {
         int key = e.getKeyCode();
-        if (key == KeyEvent.VK_W) upPressed = true;
-        if (key == KeyEvent.VK_S) downPressed = true;
-        if (key == KeyEvent.VK_A) leftPressed = true;
-        if (key == KeyEvent.VK_D) rightPressed = true;
+        if (key == KeyEvent.VK_W)
+            upPressed = true;
+        if (key == KeyEvent.VK_S)
+            downPressed = true;
+        if (key == KeyEvent.VK_A)
+            leftPressed = true;
+        if (key == KeyEvent.VK_D)
+            rightPressed = true;
+        if (key == KeyEvent.VK_SPACE) {
+            shooting = true;
+        }
     }
 
     @Override
     public void keyReleased(KeyEvent e) {
         int key = e.getKeyCode();
-        if (key == KeyEvent.VK_W) upPressed = false;
-        if (key == KeyEvent.VK_S) downPressed = false;
-        if (key == KeyEvent.VK_A) leftPressed = false;
-        if (key == KeyEvent.VK_D) rightPressed = false;
+        if (key == KeyEvent.VK_W)
+            upPressed = false;
+        if (key == KeyEvent.VK_S)
+            downPressed = false;
+        if (key == KeyEvent.VK_A)
+            leftPressed = false;
+        if (key == KeyEvent.VK_D)
+            rightPressed = false;
+        if (key == KeyEvent.VK_SPACE) {
+            shooting = false;
+        }
     }
 
     @Override
@@ -199,8 +312,7 @@ public class Game extends Canvas implements Runnable, KeyListener, MouseMotionLi
 
     @Override
     public void mouseMoved(MouseEvent e) {
-        Point mousePoint = e.getPoint();
-        player.updateGunAngle(mousePoint.x + cameraX, mousePoint.y + cameraY);
+        // Not used.
     }
 
     @Override
