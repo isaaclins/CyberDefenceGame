@@ -2,6 +2,8 @@ package src.entity;
 
 import java.awt.Color;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.geom.AffineTransform;
 
 public class Enemy {
     private double x, y;
@@ -9,6 +11,8 @@ public class Enemy {
     private int health;
     private Color color;
     private final double friction = 0.90;
+    private final double speed = 0.1;
+    private double facingAngle;
 
     public Enemy(double x, double y, int health, Color color) {
         this.x = x;
@@ -17,6 +21,7 @@ public class Enemy {
         this.color = color;
         this.velocityX = 0;
         this.velocityY = 0;
+        this.facingAngle = 0;
     }
 
     public void move() {
@@ -27,14 +32,33 @@ public class Enemy {
         velocityY *= friction;
     }
 
+    public void moveToPlayer(double playerX, double playerY) {
+        double angle = Math.atan2(playerY - y, playerX - x);
+        velocityX += speed * Math.cos(angle);
+        velocityY += speed * Math.sin(angle);
+        facingAngle = angle;
+    }
+
     public void applyKnockback(double knockbackX, double knockbackY) {
         this.velocityX += knockbackX;
         this.velocityY += knockbackY;
     }
 
     public void render(Graphics g) {
-        g.setColor(color);
-        g.fillRect((int) x - 10, (int) y - 10, 20, 20);
+        Graphics2D g2d = (Graphics2D) g;
+        AffineTransform oldTransform = g2d.getTransform();
+
+        g2d.translate(x, y);
+        g2d.rotate(facingAngle);
+
+        g2d.setColor(color);
+        g2d.fillRect(-10, -10, 20, 20);
+
+        // Optionally, you can draw a line to indicate the facing direction
+        g2d.setColor(Color.RED);
+        g2d.drawLine(0, 0, 20, 0);
+
+        g2d.setTransform(oldTransform);
     }
 
     public double getX() {

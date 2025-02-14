@@ -7,12 +7,16 @@ public class Player {
     private final double friction = 0.90;
     private double gunX, gunY;
     private double gunAngle;
+    private double targetGunAngle;
     private final double gunRadius = 20.0;
     private final double spinSpeed = 0.1;
+    private final double gunFriction = 0.1;
 
     public Player(double startX, double startY) {
         this.x = startX;
         this.y = startY;
+        this.gunAngle = 0;
+        this.targetGunAngle = 0;
         updateGunPosition();
     }
 
@@ -40,13 +44,24 @@ public class Player {
     }
 
     public void updateGunAngle(double targetX, double targetY) {
-        gunAngle = Math.atan2(targetY - y, targetX - x);
+        targetGunAngle = Math.atan2(targetY - y, targetX - x);
+    }
+
+    public void smoothGunTransition() {
+        double angleDifference = targetGunAngle - gunAngle;
+        angleDifference = Math.atan2(Math.sin(angleDifference), Math.cos(angleDifference)); // Normalize angle difference
+        gunAngle += angleDifference * gunFriction;
         updateGunPosition();
     }
 
     public void spinGun() {
         gunAngle += spinSpeed;
         updateGunPosition();
+    }
+
+    public void applyKnockback(double knockbackX, double knockbackY) {
+        this.velocityX += knockbackX;
+        this.velocityY += knockbackY;
     }
 
     public double getGunX() {
