@@ -33,20 +33,20 @@ public class Renderer {
         Graphics2D g2d = (Graphics2D) g;
         g2d.translate(-game.getCameraX(), -game.getCameraY());
 
-        // Render the current room and its neighbors
+        // Render the current room and neighbors.
         renderRoom(g2d, game.getRoomCol(), game.getRoomRow());
         renderRoom(g2d, game.getRoomCol() - 1, game.getRoomRow());
         renderRoom(g2d, game.getRoomCol() + 1, game.getRoomRow());
         renderRoom(g2d, game.getRoomCol(), game.getRoomRow() - 1);
         renderRoom(g2d, game.getRoomCol(), game.getRoomRow() + 1);
 
-        // Render player
+        // Render player.
         g.setColor(Color.RED);
         g.fillRect((int) player.getX() - 10, (int) player.getY() - 10, 20, 20);
         g.setColor(Color.BLUE);
         g.fillRect((int) player.getGunX() - 5, (int) player.getGunY() - 5, 10, 10);
 
-        // Render enemies and pellets
+        // Render enemies and pellets.
         for (Enemy enemy : enemies) {
             enemy.render(g);
         }

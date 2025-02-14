@@ -57,6 +57,7 @@ public class Game extends Canvas {
 
     // Map for additional room windows (rooms other than player's)
     private Map<String, RoomWindow> roomWindows;
+    private int tickCounter = 0; // Used for cleaning up windows
 
     public Game() {
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
@@ -69,6 +70,8 @@ public class Game extends Canvas {
         setPreferredSize(size);
 
         window = new GameWindow("Dungeon Crawler", WINDOW_WIDTH, WINDOW_HEIGHT, this);
+        // Main window always on top (if desired):
+        window.setAlwaysOnTop(true);
         initialWindowLocation = window.getLocation();
 
         cameraX = roomCol * roomWidth;
@@ -122,6 +125,8 @@ public class Game extends Canvas {
     }
 
     public void tick() {
+        tickCounter++;
+
         if (!transitioning) {
             player.move(upPressed, downPressed, leftPressed, rightPressed);
         }
@@ -162,7 +167,7 @@ public class Game extends Canvas {
             window.setLocation(newWindowX, newWindowY);
         }
 
-        // Update the player’s gun angle
+        // Update the player's gun angle based on the nearest enemy
         Enemy nearestEnemy = getNearestEnemy();
         if (nearestEnemy != null) {
             player.updateGunAngle(nearestEnemy.getX(), nearestEnemy.getY());
@@ -198,7 +203,7 @@ public class Game extends Canvas {
             }
         }
 
-        // Move enemies toward the player and update their facing angle
+        // Move enemies toward the player and update facing angle
         for (Enemy enemy : enemies) {
             enemy.moveToPlayer(playerX, playerY);
             enemy.move();
@@ -211,7 +216,8 @@ public class Game extends Canvas {
             }
         }
 
-        // For each enemy in a room different from the player's, ensure a RoomWindow exists.
+        // For each enemy in a room different from the player's, ensure a RoomWindow
+        // exists.
         for (Enemy enemy : enemies) {
             int eCol = (int) (enemy.getX() / roomWidth);
             int eRow = (int) (enemy.getY() / roomHeight);
@@ -223,12 +229,36 @@ public class Game extends Canvas {
                 }
             }
         }
-        // Update window locations (in case room indices shift)
+        // Update locations of room windows (in case room indices shift)
         for (RoomWindow rw : roomWindows.values()) {
-
             rw.updateLocation(initialWindowLocation);
         }
 
+        // Every 60 ticks, clean up room windows with no enemies or pellets.
+        if (tickCounter % 60 == 0) {
+            List<String> keysToRemove = new ArrayList<>();
+            for (String key : roomWindows.keySet()) {
+                String[] parts = key.split(",");
+                int windowCol = Integer.parseInt(parts[0]);
+                int windowRow = Integer.parseInt(parts[1]);
+
+                boolean hasEnemy = enemies.stream().anyMatch(e -> ((int) (e.getX() / roomWidth)) == windowCol
+                        && ((int) (e.getY() / roomHeight)) == windowRow);
+                boolean hasPellet = pellets.stream().anyMatch(p -> ((int) (p.getX() / roomWidth)) == windowCol
+                        && ((int) (p.getY() / roomHeight)) == windowRow);
+
+                if (!hasEnemy && !hasPellet) {
+                    keysToRemove.add(key);
+                }
+            }
+            for (String key : keysToRemove) {
+                RoomWindow rw = roomWindows.get(key);
+                if (rw != null) {
+                    rw.close(); // Dispose the JFrame
+                }
+                roomWindows.remove(key);
+            }
+        }
     }
 
     private void shoot() {
@@ -281,7 +311,7 @@ public class Game extends Canvas {
         }
         Graphics g = bs.getDrawGraphics();
 
-        // Clear and render main (player) window
+        // Clear and render main (player) window.
         g.setColor(Color.BLACK);
         g.fillRect(0, 0, getWidth(), getHeight());
         Graphics2D g2d = (Graphics2D) g;
@@ -291,25 +321,23 @@ public class Game extends Canvas {
         g.dispose();
         bs.show();
 
-        // Now render each additional room window (filtering entities to those in that room)
-        for (RoomWindow rw : roomWindows.values()) {
-            // Filter enemies and pellets for this room
+        // Render each additional room window.
+        roomWindows.values().forEach(rw -> {
             List<Enemy> roomEnemies = enemies.stream().filter(e -> {
-                int col = (int) (e.getX() / roomWidth);
-                int row = (int) (e.getY() / roomHeight);
+                int col = (int) Math.floor(e.getX() / roomWidth);
+                int row = (int) Math.floor(e.getY() / roomHeight);
                 return col == rw.getRoomCol() && row == rw.getRoomRow();
             }).collect(Collectors.toList());
             List<Pellet> roomPellets = pellets.stream().filter(p -> {
-                int col = (int) (p.getX() / roomWidth);
-                int row = (int) (p.getY() / roomHeight);
+                int col = (int) Math.floor(p.getX() / roomWidth);
+                int row = (int) Math.floor(p.getY() / roomHeight);
                 return col == rw.getRoomCol() && row == rw.getRoomRow();
             }).collect(Collectors.toList());
-            // (Player is only in the main room.)
             rw.render(roomEnemies, roomPellets, null);
-        }
-        // At the end of your render() method in Game.java
-        this.requestFocus();
+        });
 
+        // Request focus to keep input on the main window.
+        this.requestFocus();
     }
 
     public int getRoomCol() {

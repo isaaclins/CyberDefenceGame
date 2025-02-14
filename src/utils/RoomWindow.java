@@ -31,23 +31,36 @@ public class RoomWindow {
     }
 
     public void updateLocation(Point initialLocation) {
-        int newWindowX = initialLocation.x + roomCol * windowWidth;
-        int newWindowY = initialLocation.y + roomRow * windowHeight;
+        int newWindowX = initialLocation.x + (roomCol * windowWidth);
+        int newWindowY = initialLocation.y + (roomRow * windowHeight);
         window.setLocation(newWindowX, newWindowY);
     }
 
     public void render(List<Enemy> enemies, List<Pellet> pellets, Player player) {
         BufferStrategy bs = canvas.getBufferStrategy();
-        if(bs == null) {
+        if (bs == null) {
             canvas.createBufferStrategy(3);
             return;
         }
-        Graphics g = bs.getDrawGraphics();
-        g.setColor(Color.BLACK);
-        g.fillRect(0, 0, windowWidth, windowHeight);
-        renderer.render(g, enemies, pellets, player);
-        g.dispose();
-        bs.show();
+        Graphics g = null;
+        try {
+            g = bs.getDrawGraphics();
+            g.setColor(Color.BLACK);
+            g.fillRect(0, 0, windowWidth, windowHeight);
+            renderer.render(g, enemies, pellets, player);
+        } finally {
+            if (g != null) {
+                g.dispose();
+            }
+            bs.show();
+        }
+    }
+
+    // Dispose of this window.
+    public void close() {
+        if (window != null) {
+            window.dispose();
+        }
     }
 
     public int getRoomCol() {

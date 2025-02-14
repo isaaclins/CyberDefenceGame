@@ -9,6 +9,7 @@ public class GameLoop implements Runnable {
         this.game = game;
     }
 
+
     public synchronized void start() {
         running = true;
         thread = new Thread(this, "Game Thread");

@@ -5,8 +5,8 @@ import java.awt.*;
 
 public class GameWindow {
     private JFrame frame;
-    private final int width;
-    private final int height;
+    private final double width;
+    private final double height;
 
     public GameWindow(String title, int width, int height, Canvas canvas) {
         this.width = width;
@@ -16,8 +16,13 @@ public class GameWindow {
         frame.pack();
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setLocationRelativeTo(null);
-        frame.setAlwaysOnTop(true);
         frame.setVisible(true);
+    }
+    
+    public void setAlwaysOnTop(boolean flag) {
+        if(frame != null) {
+            frame.setAlwaysOnTop(flag);
+        }
     }
 
     public void setLocation(int x, int y) {
@@ -26,5 +31,11 @@ public class GameWindow {
 
     public Point getLocation() {
         return frame.getLocation();
+    }
+    
+    public void dispose() {
+        if(frame != null) {
+            frame.dispose();
+        }
     }
 }

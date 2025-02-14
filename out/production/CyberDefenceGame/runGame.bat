@@ -12,7 +12,7 @@ if not exist "%PROJECT_DIR%\out" mkdir "%PROJECT_DIR%\out"
 
 REM Compile the Java files
 echo Compiling Java files...
-"%JAVA_HOME%\bin\javac" -d "%PROJECT_DIR%\out" "%PROJECT_DIR%\src\main\Game.java" "%PROJECT_DIR%\src\utils\Constants.java"
+"%JAVA_HOME%\bin\javac" -d "%PROJECT_DIR%\out" "%PROJECT_DIR%\src\main\Game.java"
 
 REM Run the DungeonGame
 echo Running DungeonGame...
