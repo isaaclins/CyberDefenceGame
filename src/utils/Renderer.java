@@ -52,6 +52,14 @@ public class Renderer {
         int strWidth = fm.stringWidth(levelStr);
         g.drawString(levelStr, (int) player.getX() - strWidth / 2, (int) player.getY() + fm.getAscent() / 2);
 
+        // Draw XP bar
+        double xpPercentage = (double) player.getLevelingSystem().getXp()
+                / player.getLevelingSystem().getXpToNextLevel();
+        g.setColor(Color.GRAY);
+        g.fillRect((int) player.getX() - 15, (int) player.getY() + 15, 30, 5);
+        g.setColor(Color.GREEN);
+        g.fillRect((int) player.getX() - 15, (int) player.getY() + 15, (int) (30 * xpPercentage), 5);
+
         g.setColor(Color.BLUE);
         g.fillRect((int) player.getGunX() - 5, (int) player.getGunY() - 5, 10, 10);
 
