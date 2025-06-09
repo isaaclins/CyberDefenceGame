@@ -16,14 +16,18 @@ public class Player {
     private final double gunRadius = 20.0;
     private final double spinSpeed = 0.1;
     private final double gunFriction = 0.1;
+
     private Gun gun;
+    private LevelingSystem levelingSystem;
+    private final double pickupRadius = 50.0;
 
     public Player(double startX, double startY) {
         this.x = startX;
         this.y = startY;
         this.gunAngle = 0;
         this.targetGunAngle = 0;
-        this.gun = new Shotgun();
+        this.gun = new SMG();
+        this.levelingSystem = new LevelingSystem();
         updateGunPosition();
     }
 
@@ -43,6 +47,10 @@ public class Player {
         velocityX *= friction;
         velocityY *= friction;
         updateGunPosition();
+    }
+
+    public java.util.ArrayList<Pellet> shoot() {
+        return gun.shoot(gunX, gunY, gunAngle);
     }
 
     public void updateGunPosition() {
@@ -79,6 +87,14 @@ public class Player {
         return gunY;
     }
 
+    public Gun getGun() {
+        return gun;
+    }
+
+    public LevelingSystem getLevelingSystem() {
+        return levelingSystem;
+    }
+
     public double getX() {
         return x;
     }
@@ -87,19 +103,15 @@ public class Player {
         return y;
     }
 
+    public double getPickupRadius() {
+        return pickupRadius;
+    }
+
     public void setX(double x) {
         this.x = x;
     }
 
     public void setY(double y) {
         this.y = y;
-    }
-
-    public java.util.ArrayList<Pellet> shoot() {
-        return gun.shoot(gunX, gunY, gunAngle);
-    }
-
-    public Gun getGun() {
-        return gun;
     }
 }

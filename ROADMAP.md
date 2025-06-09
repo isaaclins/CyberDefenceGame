@@ -32,12 +32,12 @@
     - [x] Color & Size
     - [x] XP Drop amount
 
-- [ ] **XP & Leveling System**
+- [x] **XP & Leveling System**
   - [x] Create XP drop entity (small rectangles).
   - [x] Implement XP gain on enemy kill.
-  - [ ] If player is in radius of XP, the player will automatically pick it up.
+  - [x] If player is in radius of XP, the player will automatically pick it up.
   - [ ] If player is not in radius of XP, the XP will move SLIGHTLY towards the player (if in radius).
-  - [ ] Create a leveling system with incrementally harder levels.
+  - [x] Create a leveling system with incrementally harder levels.
   - [ ] Display player level number inside the player rectangle.
   - [ ] Implement XP bar at the bottom of the player.
 

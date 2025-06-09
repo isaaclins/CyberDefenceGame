@@ -233,6 +233,17 @@ public class Game extends Canvas {
             }
         }
 
+        // Handle XP pickup
+        Iterator<XP> xpIterator = xps.iterator();
+        while (xpIterator.hasNext()) {
+            XP xp = xpIterator.next();
+            double distance = Math.hypot(player.getX() - xp.getX(), player.getY() - xp.getY());
+            if (distance < player.getPickupRadius()) {
+                player.getLevelingSystem().addXp(xp.getAmount());
+                xpIterator.remove();
+            }
+        }
+
         // Move enemies toward the player and update facing angle
         for (Enemy enemy : enemies) {
             enemy.move();
