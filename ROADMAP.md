@@ -6,8 +6,8 @@
 
   - [x] Implement a base Gun class.
   - [x] Create Shotgun class with attributes: wide spread, high knockback, multiple bullets per shot.
-  - [ ] Create Sniper class with attributes: high damage, high bullet speed, low fire rate, small magazine.
-  - [ ] Create SMG class with attributes: high fire rate, larger magazine, moderate spread.
+  - [x] Create Sniper class with attributes: high damage, high bullet speed, low fire rate, small magazine.
+  - [x] Create SMG class with attributes: high fire rate, larger magazine, moderate spread.
   - [ ] Each class should have distinct:
     - [ ] Bullet size
     - [ ] Bullet damage

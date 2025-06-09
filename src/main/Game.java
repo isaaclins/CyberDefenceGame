@@ -210,8 +210,8 @@ public class Game extends Canvas {
 
         // Move enemies toward the player and update facing angle
         for (Enemy enemy : enemies) {
-            enemy.moveToPlayer(playerX, playerY);
             enemy.move();
+            enemy.moveToPlayer(playerX, playerY);
         }
 
         // Check collision between player and enemies

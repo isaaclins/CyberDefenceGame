@@ -1,7 +1,9 @@
 package src.entity;
 
 import src.entity.Gun;
+import src.entity.SMG;
 import src.entity.Shotgun;
+import src.entity.Sniper;
 
 public class Player {
     private double x, y;
@@ -21,7 +23,7 @@ public class Player {
         this.y = startY;
         this.gunAngle = 0;
         this.targetGunAngle = 0;
-        this.gun = new Shotgun();
+        this.gun = new SMG();
         updateGunPosition();
     }
 
