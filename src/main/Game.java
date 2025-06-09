@@ -285,38 +285,33 @@ public class Game extends Canvas {
             }
         }
 
-        // For each enemy in a room different from the player's, ensure a RoomWindow
-        // exists.
-        for (Enemy enemy : enemies) {
-            int eCol = (int) Math.floor(enemy.getX() / roomWidth);
-            int eRow = (int) Math.floor(enemy.getY() / roomHeight);
+        // Create and manage windows for other rooms
+        List<String> activeRooms = new ArrayList<>();
+        for (Enemy e : enemies) {
+            int eCol = (int) Math.floor(e.getX() / roomWidth);
+            int eRow = (int) Math.floor(e.getY() / roomHeight);
             if (eCol != roomCol || eRow != roomRow) {
                 String key = eCol + "," + eRow;
                 if (!roomWindows.containsKey(key)) {
-                    RoomWindow rw = new RoomWindow(eCol, eRow, WINDOW_WIDTH, WINDOW_HEIGHT, initialWindowLocation);
+                    RoomWindow rw = new RoomWindow(eCol, eRow, WINDOW_WIDTH, WINDOW_HEIGHT);
                     roomWindows.put(key, rw);
                 }
+                activeRooms.add(key);
             }
         }
+
         // Update locations of room windows (in case room indices shift)
         for (RoomWindow rw : roomWindows.values()) {
-            rw.updateLocation(initialWindowLocation);
+            int newWindowX = initialWindowLocation.x + (rw.getRoomCol() * WINDOW_WIDTH);
+            int newWindowY = initialWindowLocation.y + (rw.getRoomRow() * WINDOW_HEIGHT);
+            rw.setLocation(newWindowX, newWindowY);
         }
 
-        // Every 60 ticks, clean up room windows with no enemies or pellets.
-        if (tickCounter % 60 == 0) {
+        // Periodically clean up windows for rooms with no enemies
+        if (tickCounter % 60 == 0) { // every second
             List<String> keysToRemove = new ArrayList<>();
             for (String key : roomWindows.keySet()) {
-                String[] parts = key.split(",");
-                int windowCol = Integer.parseInt(parts[0]);
-                int windowRow = Integer.parseInt(parts[1]);
-
-                boolean hasEnemy = enemies.stream().anyMatch(e -> ((int) Math.floor(e.getX() / roomWidth)) == windowCol
-                        && ((int) Math.floor(e.getY() / roomHeight)) == windowRow);
-                boolean hasPellet = pellets.stream().anyMatch(p -> ((int) Math.floor(p.getX() / roomWidth)) == windowCol
-                        && ((int) Math.floor(p.getY() / roomHeight)) == windowRow);
-
-                if (!hasEnemy && !hasPellet) {
+                if (!activeRooms.contains(key)) {
                     keysToRemove.add(key);
                 }
             }

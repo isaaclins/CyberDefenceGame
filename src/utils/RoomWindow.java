@@ -18,7 +18,7 @@ public class RoomWindow {
     private int windowWidth;
     private int windowHeight;
 
-    public RoomWindow(int roomCol, int roomRow, int windowWidth, int windowHeight, Point initialLocation) {
+    public RoomWindow(int roomCol, int roomRow, int windowWidth, int windowHeight) {
         this.roomCol = roomCol;
         this.roomRow = roomRow;
         this.windowWidth = windowWidth;
@@ -26,15 +26,12 @@ public class RoomWindow {
         canvas = new Canvas();
         canvas.setPreferredSize(new Dimension(windowWidth, windowHeight));
         window = new GameWindow("Room (" + roomCol + ", " + roomRow + ")", windowWidth, windowHeight, canvas);
-        updateLocation(initialLocation);
         canvas.createBufferStrategy(3);
         renderer = new WindowRenderer(canvas, windowWidth, windowHeight, roomCol * windowWidth, roomRow * windowHeight);
     }
 
-    public void updateLocation(Point initialLocation) {
-        int newWindowX = initialLocation.x + (roomCol * windowWidth);
-        int newWindowY = initialLocation.y + (roomRow * windowHeight);
-        window.setLocation(newWindowX, newWindowY);
+    public void setLocation(int x, int y) {
+        window.setLocation(x, y);
     }
 
     public void render(List<Enemy> enemies, List<Pellet> pellets, List<XP> xps) {
