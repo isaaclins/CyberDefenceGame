@@ -33,8 +33,8 @@
     - [x] XP Drop amount
 
 - [ ] **XP & Leveling System**
-  - [ ] Create XP drop entity (small rectangles).
-  - [ ] Implement XP gain on enemy kill.
+  - [x] Create XP drop entity (small rectangles).
+  - [x] Implement XP gain on enemy kill.
   - [ ] If player is in radius of XP, the player will automatically pick it up.
   - [ ] If player is not in radius of XP, the XP will move SLIGHTLY towards the player (if in radius).
   - [ ] Create a leveling system with incrementally harder levels.
