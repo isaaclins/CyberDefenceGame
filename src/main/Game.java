@@ -4,7 +4,6 @@ import src.entity.Player;
 import src.entity.Enemy;
 import src.entity.Pellet;
 import src.entity.BigEnemy;
-import src.entity.BossEnemy;
 import src.entity.NormalEnemy;
 import src.entity.SmallEnemy;
 import src.utils.GameWindow;
@@ -114,7 +113,19 @@ public class Game extends Canvas {
         double playerY = player.getY();
         double spawnX = playerX + (random.nextDouble() * 200 - 100);
         double spawnY = playerY + (random.nextDouble() * 200 - 100);
-        enemies.add(new BossEnemy(spawnX, spawnY));
+
+        int enemyType = random.nextInt(3);
+        switch (enemyType) {
+            case 0:
+                enemies.add(new SmallEnemy(spawnX, spawnY));
+                break;
+            case 1:
+                enemies.add(new NormalEnemy(spawnX, spawnY));
+                break;
+            case 2:
+                enemies.add(new BigEnemy(spawnX, spawnY));
+                break;
+        }
     }
 
     public void start() {
