@@ -18,10 +18,10 @@
     - [x] Knockback
     - [x] Bullets shot with one shot
 
-- [ ] **Enemy System**
+- [x] **Enemy System**
 
-  - [ ] Implement a base Enemy class.
-  - [ ] Create Small enemy type: fast, low health, low damage.
+  - [x] Implement a base Enemy class.
+  - [x] Create Small enemy type: fast, low health, low damage.
   - [ ] Create Normal enemy type: medium stats.
   - [ ] Create Big enemy type: slow, high health, high damage.
   - [ ] Create Boss enemy type: unique patterns, very high health and damage.

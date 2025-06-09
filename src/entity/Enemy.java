@@ -5,20 +5,27 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.geom.AffineTransform;
 
-public class Enemy {
-    private double x, y;
-    private double velocityX, velocityY;
-    private int health;
-    private Color color;
-    private final double friction = 0.90;
-    private final double speed = 0.1;
-    private double facingAngle;
+public abstract class Enemy {
+    protected double x, y;
+    protected double velocityX, velocityY;
+    protected int health;
+    protected Color color;
+    protected final double friction = 0.90;
+    protected double speed;
+    protected double size;
+    protected int damage;
+    protected int xpDropAmount;
+    protected double facingAngle;
 
-    public Enemy(double x, double y, int health, Color color) {
+    public Enemy(double x, double y, int health, Color color, double speed, double size, int damage, int xpDropAmount) {
         this.x = x;
         this.y = y;
         this.health = health;
         this.color = color;
+        this.speed = speed;
+        this.size = size;
+        this.damage = damage;
+        this.xpDropAmount = xpDropAmount;
         this.velocityX = 0;
         this.velocityY = 0;
         this.facingAngle = 0;
@@ -51,10 +58,10 @@ public class Enemy {
         g2d.rotate(facingAngle);
 
         g2d.setColor(color);
-        g2d.fillRect(-10, -10, 20, 20);
+        g2d.fillRect((int) (-size / 2), (int) (-size / 2), (int) size, (int) size);
 
         g2d.setColor(Color.RED);
-        g2d.drawLine(0, 0, 20, 0);
+        g2d.drawLine(0, 0, (int) (size / 2), 0);
 
         g2d.setTransform(oldTransform);
     }
@@ -69,6 +76,14 @@ public class Enemy {
 
     public int getHealth() {
         return health;
+    }
+
+    public int getDamage() {
+        return damage;
+    }
+
+    public int getXpDropAmount() {
+        return xpDropAmount;
     }
 
     public void setHealth(int health) {
