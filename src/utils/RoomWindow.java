@@ -7,6 +7,7 @@ import java.util.List;
 import src.entity.Enemy;
 import src.entity.Pellet;
 import src.entity.Player;
+import src.entity.XP;
 
 public class RoomWindow {
     private GameWindow window;
@@ -36,7 +37,7 @@ public class RoomWindow {
         window.setLocation(newWindowX, newWindowY);
     }
 
-    public void render(List<Enemy> enemies, List<Pellet> pellets, Player player) {
+    public void render(List<Enemy> enemies, List<Pellet> pellets, List<XP> xps) {
         BufferStrategy bs = canvas.getBufferStrategy();
         if (bs == null) {
             canvas.createBufferStrategy(3);
@@ -47,7 +48,7 @@ public class RoomWindow {
             g = bs.getDrawGraphics();
             g.setColor(Color.BLACK);
             g.fillRect(0, 0, windowWidth, windowHeight);
-            renderer.render(g, enemies, pellets, player);
+            renderer.render(g, enemies, pellets, null, xps);
         } finally {
             if (g != null) {
                 g.dispose();

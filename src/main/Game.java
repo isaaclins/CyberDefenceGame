@@ -6,6 +6,7 @@ import src.entity.Pellet;
 import src.entity.BigEnemy;
 import src.entity.NormalEnemy;
 import src.entity.SmallEnemy;
+import src.entity.XP;
 import src.utils.GameWindow;
 import src.utils.Renderer;
 import src.utils.InputHandler;
@@ -52,6 +53,7 @@ public class Game extends Canvas {
 
     private List<Pellet> pellets;
     private List<Enemy> enemies;
+    private List<XP> xps;
     private Timer enemySpawnTimer;
     private Random random;
 
@@ -81,6 +83,7 @@ public class Game extends Canvas {
 
         pellets = new ArrayList<>();
         enemies = new ArrayList<>();
+        xps = new ArrayList<>();
         random = new Random();
 
         renderer = new Renderer(this, roomWidth, roomHeight);
@@ -200,8 +203,15 @@ public class Game extends Canvas {
             pellet.move();
 
             boolean pelletRemoved = false;
-            for (Enemy enemy : enemies) {
+            Iterator<Enemy> enemyIterator = enemies.iterator();
+            while (enemyIterator.hasNext()) {
+                Enemy enemy = enemyIterator.next();
                 if (checkCollision(pellet, enemy)) {
+                    enemy.setHealth(enemy.getHealth() - (int) pellet.getDamage());
+                    if (enemy.getHealth() <= 0) {
+                        xps.add(new XP(enemy.getX(), enemy.getY(), enemy.getXpDropAmount()));
+                        enemyIterator.remove();
+                    }
                     applyKnockback(enemy, pellet);
                     pelletIterator.remove();
                     pelletRemoved = true;
@@ -338,7 +348,7 @@ public class Game extends Canvas {
         g.fillRect(0, 0, getWidth(), getHeight());
         Graphics2D g2d = (Graphics2D) g;
         g2d.translate(-cameraX, -cameraY);
-        renderer.render(player, enemies, pellets);
+        renderer.render(player, enemies, pellets, xps);
         g2d.translate(cameraX, cameraY);
         g.dispose();
         bs.show();
@@ -355,7 +365,12 @@ public class Game extends Canvas {
                 int row = (int) Math.floor(p.getY() / roomHeight);
                 return col == rw.getRoomCol() && row == rw.getRoomRow();
             }).collect(Collectors.toList());
-            rw.render(roomEnemies, roomPellets, null);
+            List<XP> roomXPs = xps.stream().filter(x -> {
+                int col = (int) Math.floor(x.getX() / roomWidth);
+                int row = (int) Math.floor(x.getY() / roomHeight);
+                return col == rw.getRoomCol() && row == rw.getRoomRow();
+            }).collect(Collectors.toList());
+            rw.render(roomEnemies, roomPellets, roomXPs);
         });
 
         // Request focus to keep input on the main window.

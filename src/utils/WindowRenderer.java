@@ -5,6 +5,7 @@ import java.util.List;
 import src.entity.Enemy;
 import src.entity.Pellet;
 import src.entity.Player;
+import src.entity.XP;
 
 public class WindowRenderer {
     private int roomWidth;
@@ -19,13 +20,13 @@ public class WindowRenderer {
         this.cameraY = cameraY;
     }
 
-    public void render(Graphics g, List<Enemy> enemies, List<Pellet> pellets, Player player) {
+    public void render(Graphics g, List<Enemy> enemies, List<Pellet> pellets, Player player, List<XP> xps) {
         Graphics2D g2d = (Graphics2D) g;
         g2d.translate(-cameraX, -cameraY);
 
-        renderRoom(g2d, (int)(cameraX/roomWidth), (int)(cameraY/roomHeight));
+        renderRoom(g2d, (int) (cameraX / roomWidth), (int) (cameraY / roomHeight));
 
-        if(player != null) {
+        if (player != null) {
             g.setColor(Color.RED);
             g.fillRect((int) player.getX() - 10, (int) player.getY() - 10, 20, 20);
             g.setColor(Color.BLUE);
@@ -37,6 +38,11 @@ public class WindowRenderer {
         }
         for (Pellet pellet : pellets) {
             pellet.render(g);
+        }
+        if (xps != null) {
+            for (XP xp : xps) {
+                xp.render(g);
+            }
         }
 
         g2d.translate(cameraX, cameraY);

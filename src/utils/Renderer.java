@@ -3,6 +3,7 @@ package src.utils;
 import src.entity.Enemy;
 import src.entity.Pellet;
 import src.entity.Player;
+import src.entity.XP;
 import src.main.Game;
 import java.awt.*;
 import java.awt.image.BufferStrategy;
@@ -19,7 +20,7 @@ public class Renderer {
         this.roomHeight = roomHeight;
     }
 
-    public void render(Player player, List<Enemy> enemies, List<Pellet> pellets) {
+    public void render(Player player, List<Enemy> enemies, List<Pellet> pellets, List<XP> xps) {
         BufferStrategy bs = game.getBufferStrategy();
         if (bs == null) {
             game.createBufferStrategy(3);
@@ -52,6 +53,9 @@ public class Renderer {
         }
         for (Pellet pellet : pellets) {
             pellet.render(g);
+        }
+        for (XP xp : xps) {
+            xp.render(g);
         }
 
         g2d.translate(game.getCameraX(), game.getCameraY());
