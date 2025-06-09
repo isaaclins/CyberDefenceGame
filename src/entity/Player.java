@@ -1,5 +1,8 @@
 package src.entity;
 
+import src.entity.Gun;
+import src.entity.Shotgun;
+
 public class Player {
     private double x, y;
     private double velocityX = 0, velocityY = 0;
@@ -11,12 +14,14 @@ public class Player {
     private final double gunRadius = 20.0;
     private final double spinSpeed = 0.1;
     private final double gunFriction = 0.1;
+    private Gun gun;
 
     public Player(double startX, double startY) {
         this.x = startX;
         this.y = startY;
         this.gunAngle = 0;
         this.targetGunAngle = 0;
+        this.gun = new Shotgun();
         updateGunPosition();
     }
 
@@ -86,5 +91,13 @@ public class Player {
 
     public void setY(double y) {
         this.y = y;
+    }
+
+    public java.util.ArrayList<Pellet> shoot() {
+        return gun.shoot(gunX, gunY, gunAngle);
+    }
+
+    public Gun getGun() {
+        return gun;
     }
 }

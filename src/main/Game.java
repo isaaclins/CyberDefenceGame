@@ -45,9 +45,6 @@ public class Game extends Canvas {
 
     private boolean upPressed, downPressed, leftPressed, rightPressed;
     private boolean shooting = false;
-    private long lastShotTime = 0;
-    private final long shotCooldown = 25; // milliseconds
-    private final double knockbackstrength = 0.2;
     private double mouseX, mouseY;
 
     private List<Pellet> pellets;
@@ -177,9 +174,8 @@ public class Game extends Canvas {
         player.smoothGunTransition();
 
         // Handle shooting
-        if (shooting && System.currentTimeMillis() - lastShotTime >= shotCooldown) {
+        if (shooting) {
             shoot();
-            lastShotTime = System.currentTimeMillis();
         }
 
         // Move pellets and handle collisions with enemies
@@ -271,9 +267,9 @@ public class Game extends Canvas {
     }
 
     private void shoot() {
-        Enemy nearestEnemy = getNearestEnemy();
-        if (nearestEnemy != null) {
-            pellets.add(new Pellet(player.getGunX(), player.getGunY(), nearestEnemy.getX(), nearestEnemy.getY()));
+        ArrayList<Pellet> newPellets = player.shoot();
+        if (newPellets != null) {
+            pellets.addAll(newPellets);
         }
     }
 
@@ -301,14 +297,16 @@ public class Game extends Canvas {
     }
 
     private void applyKnockback(Enemy enemy, Pellet pellet) {
-        double knockbackX = (enemy.getX() - pellet.getX()) * knockbackstrength;
-        double knockbackY = (enemy.getY() - pellet.getY()) * knockbackstrength;
+        double angle = Math.atan2(enemy.getY() - pellet.getY(), enemy.getX() - pellet.getX());
+        double knockbackX = pellet.getKnockback() * Math.cos(angle);
+        double knockbackY = pellet.getKnockback() * Math.sin(angle);
         enemy.applyKnockback(knockbackX, knockbackY);
     }
 
     private void applyKnockbackToPlayer(Enemy enemy) {
-        double knockbackX = (player.getX() - enemy.getX()) * 2.0;
-        double knockbackY = (player.getY() - enemy.getY()) * 2.0;
+        double angle = Math.atan2(player.getY() - enemy.getY(), player.getX() - enemy.getX());
+        double knockbackX = 0.2 * Math.cos(angle);
+        double knockbackY = 0.2 * Math.sin(angle);
         player.applyKnockback(knockbackX, knockbackY);
     }
 

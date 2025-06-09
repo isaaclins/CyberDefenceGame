@@ -5,18 +5,19 @@ import java.awt.Graphics;
 
 public class Pellet {
     private double x, y;
-    private double targetX, targetY;
     private double velocityX, velocityY;
-    private final double speed = 5.0;
+    private double damage;
+    private double size;
+    private double knockback;
 
-    public Pellet(double startX, double startY, double targetX, double targetY) {
-        this.x = startX;
-        this.y = startY;
-        this.targetX = targetX;
-        this.targetY = targetY;
-        double angle = Math.atan2(targetY - startY, targetX - startX);
-        velocityX = speed * Math.cos(angle);
-        velocityY = speed * Math.sin(angle);
+    public Pellet(double x, double y, double angle, double speed, double damage, double size, double knockback) {
+        this.x = x;
+        this.y = y;
+        this.velocityX = speed * Math.cos(angle);
+        this.velocityY = speed * Math.sin(angle);
+        this.damage = damage;
+        this.size = size;
+        this.knockback = knockback;
     }
 
     public void move() {
@@ -26,7 +27,7 @@ public class Pellet {
 
     public void render(Graphics g) {
         g.setColor(Color.YELLOW);
-        g.fillOval((int)x - 3, (int)y - 3, 6, 6);
+        g.fillOval((int) (x - size / 2), (int) (y - size / 2), (int) size, (int) size);
     }
 
     public double getX() {
@@ -35,5 +36,13 @@ public class Pellet {
 
     public double getY() {
         return y;
+    }
+
+    public double getDamage() {
+        return damage;
+    }
+
+    public double getKnockback() {
+        return knockback;
     }
 }
