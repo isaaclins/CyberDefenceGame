@@ -197,9 +197,18 @@ public class Game extends Canvas {
                     break;
                 }
             }
-            if (!pelletRemoved && (pellet.getX() < 0 || pellet.getX() > roomWidth * 3 ||
-                    pellet.getY() < 0 || pellet.getY() > roomHeight * 3)) {
-                pelletIterator.remove();
+            if (!pelletRemoved) {
+                // A liberal bounding box for pellets around the current player's room region.
+                // This prevents pellets from being immediately removed in negative-coordinate
+                // rooms.
+                double minX = (roomCol - 2) * roomWidth;
+                double maxX = (roomCol + 3) * roomWidth;
+                double minY = (roomRow - 2) * roomHeight;
+                double maxY = (roomRow + 3) * roomHeight;
+
+                if (pellet.getX() < minX || pellet.getX() > maxX || pellet.getY() < minY || pellet.getY() > maxY) {
+                    pelletIterator.remove();
+                }
             }
         }
 
@@ -219,8 +228,8 @@ public class Game extends Canvas {
         // For each enemy in a room different from the player's, ensure a RoomWindow
         // exists.
         for (Enemy enemy : enemies) {
-            int eCol = (int) (enemy.getX() / roomWidth);
-            int eRow = (int) (enemy.getY() / roomHeight);
+            int eCol = (int) Math.floor(enemy.getX() / roomWidth);
+            int eRow = (int) Math.floor(enemy.getY() / roomHeight);
             if (eCol != roomCol || eRow != roomRow) {
                 String key = eCol + "," + eRow;
                 if (!roomWindows.containsKey(key)) {
@@ -242,10 +251,10 @@ public class Game extends Canvas {
                 int windowCol = Integer.parseInt(parts[0]);
                 int windowRow = Integer.parseInt(parts[1]);
 
-                boolean hasEnemy = enemies.stream().anyMatch(e -> ((int) (e.getX() / roomWidth)) == windowCol
-                        && ((int) (e.getY() / roomHeight)) == windowRow);
-                boolean hasPellet = pellets.stream().anyMatch(p -> ((int) (p.getX() / roomWidth)) == windowCol
-                        && ((int) (p.getY() / roomHeight)) == windowRow);
+                boolean hasEnemy = enemies.stream().anyMatch(e -> ((int) Math.floor(e.getX() / roomWidth)) == windowCol
+                        && ((int) Math.floor(e.getY() / roomHeight)) == windowRow);
+                boolean hasPellet = pellets.stream().anyMatch(p -> ((int) Math.floor(p.getX() / roomWidth)) == windowCol
+                        && ((int) Math.floor(p.getY() / roomHeight)) == windowRow);
 
                 if (!hasEnemy && !hasPellet) {
                     keysToRemove.add(key);
