@@ -1,0 +1,27 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Development Workflow
+
+This project follows a strict development and testing procedure. You are required to adhere to it for every change you make.
+
+### Roadmap
+Your primary guide for tasks is the [ROADMAP.md](mdc:ROADMAP.md). Implement the features as outlined in the roadmap.
+
+### Test-After-Implement Cycle
+It is crucial to ensure the game remains in a working state at all times.
+
+1.  After implementing a feature or a sub-task from the roadmap (e.g., checking off an item), run the game to test your changes.
+2.  To run the game, execute the following command in the terminal:
+    ```bash
+    ./runGame.sh
+    ```
+3.  **Analyze the output:**
+    - If the terminal output includes `Game closed.`, the test is considered successful.
+    - Any other output, especially stack traces or error messages, indicates a failure.
+4.  **Error Handling:**
+    - **You are required to attempt to fix any errors you encounter.**
+    - Analyze the error message, review your recent changes, and apply a fix.
+    - Repeat the test cycle until the game runs successfully.
