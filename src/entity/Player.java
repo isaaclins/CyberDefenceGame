@@ -20,6 +20,7 @@ public class Player {
     private Gun gun;
     private LevelingSystem levelingSystem;
     private final double pickupRadius = 50.0;
+    private final double attractionRadius = 150.0;
 
     public Player(double startX, double startY) {
         this.x = startX;
@@ -105,6 +106,10 @@ public class Player {
 
     public double getPickupRadius() {
         return pickupRadius;
+    }
+
+    public double getAttractionRadius() {
+        return attractionRadius;
     }
 
     public void setX(double x) {

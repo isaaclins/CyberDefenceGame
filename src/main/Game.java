@@ -241,7 +241,10 @@ public class Game extends Canvas {
             if (distance < player.getPickupRadius()) {
                 player.getLevelingSystem().addXp(xp.getAmount());
                 xpIterator.remove();
+            } else if (distance < player.getAttractionRadius()) {
+                xp.moveTo(player.getX(), player.getY());
             }
+            xp.move();
         }
 
         // Move enemies toward the player and update facing angle

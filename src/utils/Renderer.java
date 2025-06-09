@@ -44,6 +44,14 @@ public class Renderer {
         // Render player.
         g.setColor(Color.RED);
         g.fillRect((int) player.getX() - 10, (int) player.getY() - 10, 20, 20);
+
+        // Draw player level
+        String levelStr = "Lvl " + player.getLevelingSystem().getLevel();
+        g.setColor(Color.WHITE);
+        FontMetrics fm = g.getFontMetrics();
+        int strWidth = fm.stringWidth(levelStr);
+        g.drawString(levelStr, (int) player.getX() - strWidth / 2, (int) player.getY() + fm.getAscent() / 2);
+
         g.setColor(Color.BLUE);
         g.fillRect((int) player.getGunX() - 5, (int) player.getGunY() - 5, 10, 10);
 
