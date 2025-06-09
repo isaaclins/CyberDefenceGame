@@ -8,15 +8,15 @@
   - [x] Create Shotgun class with attributes: wide spread, high knockback, multiple bullets per shot.
   - [x] Create Sniper class with attributes: high damage, high bullet speed, low fire rate, small magazine.
   - [x] Create SMG class with attributes: high fire rate, larger magazine, moderate spread.
-  - [ ] Each class should have distinct:
-    - [ ] Bullet size
-    - [ ] Bullet damage
-    - [ ] Bullet speed
-    - [ ] Reload speed
-    - [ ] Magazine size
-    - [ ] Spread
-    - [ ] Knockback
-    - [ ] Bullets shot with one shot
+  - [x] Each class should have distinct:
+    - [x] Bullet size
+    - [x] Bullet damage
+    - [x] Bullet speed
+    - [x] Reload speed
+    - [x] Magazine size
+    - [x] Spread
+    - [x] Knockback
+    - [x] Bullets shot with one shot
 
 - [ ] **Enemy System**
 
