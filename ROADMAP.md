@@ -39,7 +39,7 @@
   - [x] If player is not in radius of XP, the XP will move SLIGHTLY towards the player (if in radius).
   - [x] Create a leveling system with incrementally harder levels.
   - [x] Display player level number inside the player rectangle.
-  - [ ] Implement XP bar at the bottom of the player.
+  - [x] Implement XP bar at the bottom of the player.
 
 ## UI/UX & Screens
 
