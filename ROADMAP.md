@@ -45,7 +45,7 @@
 
 - [ ] **Menu Screen**
 
-  - [ ] Create a main menu screen.
+  - [x] Create a main menu screen.
   - [ ] Implement a modular class selection system. New gun classes should automatically appear as options.
 
 - [ ] **Settings Page**

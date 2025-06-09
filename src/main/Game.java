@@ -7,6 +7,7 @@ import src.entity.BigEnemy;
 import src.entity.NormalEnemy;
 import src.entity.SmallEnemy;
 import src.entity.XP;
+import src.screens.MenuScreen;
 import src.utils.GameWindow;
 import src.utils.Renderer;
 import src.utils.InputHandler;
@@ -30,6 +31,9 @@ public class Game extends Canvas {
     private GameLoop gameLoop;
     private Renderer renderer;
     private InputHandler inputHandler;
+
+    private GameState gameState;
+    private MenuScreen menuScreen;
 
     private final int WINDOW_WIDTH;
     private final int WINDOW_HEIGHT;
@@ -76,6 +80,9 @@ public class Game extends Canvas {
         window.setAlwaysOnTop(true);
         initialWindowLocation = window.getLocation();
 
+        gameState = GameState.MENU;
+        menuScreen = new MenuScreen();
+
         cameraX = roomCol * roomWidth;
         cameraY = roomRow * roomHeight;
 
@@ -92,6 +99,7 @@ public class Game extends Canvas {
 
         addKeyListener(inputHandler);
         addMouseMotionListener(inputHandler);
+        addMouseListener(inputHandler);
         setFocusable(true);
 
         roomWindows = new HashMap<>();
@@ -135,11 +143,26 @@ public class Game extends Canvas {
         gameLoop.start();
     }
 
+    public void startGame() {
+        gameState = GameState.PLAYING;
+    }
+
     public void stop() {
         gameLoop.stop();
     }
 
     public void tick() {
+        switch (gameState) {
+            case MENU:
+                // No tick logic for menu yet
+                break;
+            case PLAYING:
+                tickPlaying();
+                break;
+        }
+    }
+
+    public void tickPlaying() {
         tickCounter++;
 
         if (!transitioning) {
@@ -303,6 +326,8 @@ public class Game extends Canvas {
                 roomWindows.remove(key);
             }
         }
+
+        this.requestFocus();
     }
 
     private void shoot() {
@@ -357,6 +382,23 @@ public class Game extends Canvas {
         }
         Graphics g = bs.getDrawGraphics();
 
+        switch (gameState) {
+            case MENU:
+                menuScreen.render(g, getWidth(), getHeight());
+                break;
+            case PLAYING:
+                renderPlaying(g);
+                break;
+        }
+
+        g.dispose();
+        bs.show();
+
+        // Request focus to keep input on the main window.
+        this.requestFocus();
+    }
+
+    public void renderPlaying(Graphics g) {
         // Clear and render main (player) window.
         g.setColor(Color.BLACK);
         g.fillRect(0, 0, getWidth(), getHeight());
@@ -364,8 +406,6 @@ public class Game extends Canvas {
         g2d.translate(-cameraX, -cameraY);
         renderer.render(player, enemies, pellets, xps);
         g2d.translate(cameraX, cameraY);
-        g.dispose();
-        bs.show();
 
         // Render each additional room window.
         roomWindows.values().forEach(rw -> {
@@ -429,6 +469,14 @@ public class Game extends Canvas {
 
     public BufferStrategy getBufferStrategy() {
         return super.getBufferStrategy();
+    }
+
+    public GameState getGameState() {
+        return gameState;
+    }
+
+    public MenuScreen getMenuScreen() {
+        return menuScreen;
     }
 
     public static void main(String[] args) {
