@@ -27,7 +27,7 @@ public class Player {
         this.y = startY;
         this.gunAngle = 0;
         this.targetGunAngle = 0;
-        this.gun = new SMG();
+        this.gun = null;
         this.levelingSystem = new LevelingSystem();
         updateGunPosition();
     }
@@ -118,5 +118,9 @@ public class Player {
 
     public void setY(double y) {
         this.y = y;
+    }
+
+    public void setGun(Gun gun) {
+        this.gun = gun;
     }
 }

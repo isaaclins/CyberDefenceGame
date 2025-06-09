@@ -7,6 +7,7 @@ import src.entity.BigEnemy;
 import src.entity.NormalEnemy;
 import src.entity.SmallEnemy;
 import src.entity.XP;
+import src.entity.Gun;
 import src.screens.MenuScreen;
 import src.utils.GameWindow;
 import src.utils.Renderer;
@@ -143,7 +144,8 @@ public class Game extends Canvas {
         gameLoop.start();
     }
 
-    public void startGame() {
+    public void startGame(Gun selectedGun) {
+        player.setGun(selectedGun);
         gameState = GameState.PLAYING;
     }
 

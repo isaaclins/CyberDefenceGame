@@ -43,10 +43,10 @@
 
 ## UI/UX & Screens
 
-- [ ] **Menu Screen**
+- [x] **Menu Screen**
 
   - [x] Create a main menu screen.
-  - [ ] Implement a modular class selection system. New gun classes should automatically appear as options.
+  - [x] Implement a modular class selection system. New gun classes should automatically appear as options.
 
 - [ ] **Settings Page**
 
