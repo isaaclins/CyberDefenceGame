@@ -22,15 +22,15 @@
 
   - [x] Implement a base Enemy class.
   - [x] Create Small enemy type: fast, low health, low damage.
-  - [ ] Create Normal enemy type: medium stats.
-  - [ ] Create Big enemy type: slow, high health, high damage.
-  - [ ] Create Boss enemy type: unique patterns, very high health and damage.
-  - [ ] Each enemy type should have distinct:
-    - [ ] Speed
-    - [ ] Health
-    - [ ] Damage
-    - [ ] Color & Size
-    - [ ] XP Drop amount
+  - [x] Create Normal enemy type: medium stats.
+  - [x] Create Big enemy type: slow, high health, high damage.
+  - [x] Create Boss enemy type: unique patterns, very high health and damage.
+  - [x] Each enemy type should have distinct:
+    - [x] Speed
+    - [x] Health
+    - [x] Damage
+    - [x] Color & Size
+    - [x] XP Drop amount
 
 - [ ] **XP & Leveling System**
   - [ ] Create XP drop entity (small rectangles).

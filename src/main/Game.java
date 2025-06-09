@@ -3,6 +3,9 @@ package src.main;
 import src.entity.Player;
 import src.entity.Enemy;
 import src.entity.Pellet;
+import src.entity.BigEnemy;
+import src.entity.BossEnemy;
+import src.entity.NormalEnemy;
 import src.entity.SmallEnemy;
 import src.utils.GameWindow;
 import src.utils.Renderer;
@@ -111,7 +114,7 @@ public class Game extends Canvas {
         double playerY = player.getY();
         double spawnX = playerX + (random.nextDouble() * 200 - 100);
         double spawnY = playerY + (random.nextDouble() * 200 - 100);
-        enemies.add(new SmallEnemy(spawnX, spawnY));
+        enemies.add(new BossEnemy(spawnX, spawnY));
     }
 
     public void start() {

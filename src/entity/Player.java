@@ -23,7 +23,7 @@ public class Player {
         this.y = startY;
         this.gunAngle = 0;
         this.targetGunAngle = 0;
-        this.gun = new SMG();
+        this.gun = new Shotgun();
         updateGunPosition();
     }
 
