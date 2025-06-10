@@ -8,6 +8,7 @@ import src.entity.NormalEnemy;
 import src.entity.SmallEnemy;
 import src.entity.XP;
 import src.entity.Gun;
+import src.entity.Particle;
 import src.screens.MenuScreen;
 import src.utils.GameWindow;
 import src.utils.Renderer;
@@ -25,6 +26,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
 public class Game extends Canvas {
@@ -59,6 +61,7 @@ public class Game extends Canvas {
     private List<Pellet> pellets;
     private List<Enemy> enemies;
     private List<XP> xps;
+    private List<Particle> particles;
     private Timer enemySpawnTimer;
     private Random random;
 
@@ -68,6 +71,8 @@ public class Game extends Canvas {
 
     private long lastHitTime = 0;
     private final long hitCooldown = 1000; // 1 second in milliseconds
+    private double screenShakeMagnitude = 10;
+    private int screenShakeDuration = 1;
 
     public Game() {
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
@@ -93,8 +98,9 @@ public class Game extends Canvas {
         player = new Player(cameraX + 100, cameraY + 100);
 
         pellets = new ArrayList<>();
-        enemies = new ArrayList<>();
+        enemies = new CopyOnWriteArrayList<>();
         xps = new ArrayList<>();
+        particles = new ArrayList<>();
         random = new Random();
 
         renderer = new Renderer(this, roomWidth, roomHeight);
@@ -205,9 +211,6 @@ public class Game extends Canvas {
         if (changed) {
             cameraX = roomCol * roomWidth;
             cameraY = roomRow * roomHeight;
-            int newWindowX = initialWindowLocation.x + roomCol * WINDOW_WIDTH;
-            int newWindowY = initialWindowLocation.y + roomRow * WINDOW_HEIGHT;
-            window.setLocation(newWindowX, newWindowY);
         }
 
         // Update the player's gun angle based on the nearest enemy
@@ -223,6 +226,20 @@ public class Game extends Canvas {
         if (shooting) {
             shoot();
         }
+
+        tickParticles();
+        tickScreenShake();
+
+        // Update window position with shake
+        double shakeOffsetX = 0;
+        double shakeOffsetY = 0;
+        if (screenShakeDuration > 0) {
+            shakeOffsetX = (random.nextDouble() - 0.5) * screenShakeMagnitude;
+            shakeOffsetY = (random.nextDouble() - 0.5) * screenShakeMagnitude;
+        }
+        int newWindowX = initialWindowLocation.x + roomCol * WINDOW_WIDTH + (int) shakeOffsetX;
+        int newWindowY = initialWindowLocation.y + roomRow * WINDOW_HEIGHT + (int) shakeOffsetY;
+        window.setLocation(newWindowX, newWindowY);
 
         // Check for collisions between player and enemies
         Iterator<Enemy> enemyCollisionIterator = enemies.iterator();
@@ -240,19 +257,27 @@ public class Game extends Canvas {
 
         // Move pellets and handle collisions with enemies
         Iterator<Pellet> pelletIterator = pellets.iterator();
+        List<Enemy> enemiesToRemove = new ArrayList<>();
         while (pelletIterator.hasNext()) {
             Pellet pellet = pelletIterator.next();
             pellet.move();
 
             boolean pelletRemoved = false;
-            Iterator<Enemy> enemyIterator = enemies.iterator();
-            while (enemyIterator.hasNext()) {
-                Enemy enemy = enemyIterator.next();
+            for (Enemy enemy : enemies) {
                 if (checkCollision(pellet, enemy)) {
                     enemy.setHealth(enemy.getHealth() - (int) pellet.getDamage());
                     if (enemy.getHealth() <= 0) {
                         xps.add(new XP(enemy.getX(), enemy.getY(), enemy.getXpDropAmount()));
-                        enemyIterator.remove();
+                        // Create particle explosion on death
+                        for (int i = 0; i < 30; i++) {
+                            double angle = random.nextDouble() * 2 * Math.PI;
+                            double speed = 1 + random.nextDouble() * 2;
+                            double dx = Math.cos(angle) * speed;
+                            double dy = Math.sin(angle) * speed;
+                            particles.add(new Particle(enemy.getX(), enemy.getY(), dx, dy, 30 + random.nextInt(30),
+                                    enemy.getColor()));
+                        }
+                        enemiesToRemove.add(enemy);
                     }
                     applyKnockback(enemy, pellet);
                     pelletIterator.remove();
@@ -274,6 +299,7 @@ public class Game extends Canvas {
                 }
             }
         }
+        enemies.removeAll(enemiesToRemove);
 
         // Handle XP pickup
         Iterator<XP> xpIterator = xps.iterator();
@@ -312,9 +338,9 @@ public class Game extends Canvas {
 
         // Update locations of room windows (in case room indices shift)
         for (RoomWindow rw : roomWindows.values()) {
-            int newWindowX = initialWindowLocation.x + (rw.getRoomCol() * WINDOW_WIDTH);
-            int newWindowY = initialWindowLocation.y + (rw.getRoomRow() * WINDOW_HEIGHT);
-            rw.setLocation(newWindowX, newWindowY);
+            int roomWindowX = initialWindowLocation.x + (rw.getRoomCol() * WINDOW_WIDTH);
+            int roomWindowY = initialWindowLocation.y + (rw.getRoomRow() * WINDOW_HEIGHT);
+            rw.setLocation(roomWindowX, roomWindowY);
         }
 
         // Periodically clean up windows for rooms with no enemies
@@ -337,10 +363,47 @@ public class Game extends Canvas {
         this.requestFocus();
     }
 
+    private void tickScreenShake() {
+        if (screenShakeDuration > 0) {
+            screenShakeDuration--;
+            screenShakeMagnitude *= 0.9; // Decay the magnitude
+        } else {
+            screenShakeMagnitude = 0;
+        }
+    }
+
+    private void tickParticles() {
+        Iterator<Particle> iterator = particles.iterator();
+        while (iterator.hasNext()) {
+            Particle p = iterator.next();
+            p.tick();
+            if (!p.isAlive()) {
+                iterator.remove();
+            }
+        }
+    }
+
     private void shoot() {
-        ArrayList<Pellet> newPellets = player.shoot();
-        if (newPellets != null) {
-            pellets.addAll(newPellets);
+        if (player.getGun() != null) {
+            List<Pellet> newPellets = player.shoot();
+            if (newPellets != null && !newPellets.isEmpty()) {
+                this.pellets.addAll(newPellets);
+                // Add particle effects
+                double gunX = player.getGunX();
+                double gunY = player.getGunY();
+                double angle = player.getGunAngle();
+                double spread = player.getGun().getSpread();
+                for (int i = 0; i < 20; i++) {
+                    double particleAngle = angle + (random.nextDouble() - 0.5) * spread;
+                    double particleSpeed = 2 + random.nextDouble() * 2;
+                    double dx = Math.cos(particleAngle) * particleSpeed;
+                    double dy = Math.sin(particleAngle) * particleSpeed;
+                    particles.add(new Particle(gunX, gunY, dx, dy, 20 + random.nextInt(20), Color.ORANGE));
+                }
+                // Trigger screen shake
+                screenShakeMagnitude = 5;
+                screenShakeDuration = 10;
+            }
         }
     }
 
@@ -417,7 +480,7 @@ public class Game extends Canvas {
         g.fillRect(0, 0, getWidth(), getHeight());
         Graphics2D g2d = (Graphics2D) g;
         g2d.translate(-cameraX, -cameraY);
-        renderer.render(player, enemies, pellets, xps);
+        renderer.render(player, enemies, pellets, xps, particles);
         g2d.translate(cameraX, cameraY);
 
         // Render each additional room window.
@@ -437,7 +500,12 @@ public class Game extends Canvas {
                 int row = (int) Math.floor(x.getY() / roomHeight);
                 return col == rw.getRoomCol() && row == rw.getRoomRow();
             }).collect(Collectors.toList());
-            rw.render(roomEnemies, roomPellets, roomXPs);
+            List<Particle> roomParticles = particles.stream().filter(p -> {
+                int col = (int) Math.floor(p.getX() / roomWidth);
+                int row = (int) Math.floor(p.getY() / roomHeight);
+                return col == rw.getRoomCol() && row == rw.getRoomRow();
+            }).collect(Collectors.toList());
+            rw.render(roomEnemies, roomPellets, roomXPs, roomParticles);
         });
 
         // Request focus to keep input on the main window.

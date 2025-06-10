@@ -63,10 +63,10 @@
 
 - [ ] **Visual Effects**
 
-  - [ ] Add particle effects for gunshots.
-  - [ ] Add particle effects for enemy deaths.
-  - [ ] Implement a screen shake effect when the player shoots.
-  - [ ] Add glow effect for entities (player, enemies, xps, bullets)
+  - [x] Add particle effects for gunshots.
+  - [x] Add particle effects for enemy deaths.
+  - [x] Implement a screen shake effect when the player shoots.
+  - [x] Add glow effect for entities (player, enemies, xps, bullets)
 
 ## Game Flow & State
 

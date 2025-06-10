@@ -100,6 +100,10 @@ public class Player {
         return gunY;
     }
 
+    public double getGunAngle() {
+        return gunAngle;
+    }
+
     public Gun getGun() {
         return gun;
     }

@@ -2,6 +2,9 @@ package src.entity;
 
 import java.awt.Color;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.geom.Ellipse2D;
+import src.utils.GlowRenderer;
 
 public class Pellet {
     private double x, y;
@@ -26,8 +29,14 @@ public class Pellet {
     }
 
     public void render(Graphics g) {
-        g.setColor(Color.YELLOW);
-        g.fillOval((int) (x - size / 2), (int) (y - size / 2), (int) size, (int) size);
+        Graphics2D g2d = (Graphics2D) g.create();
+        Ellipse2D.Double pelletShape = new Ellipse2D.Double(x - size / 2, y - size / 2, size, size);
+
+        GlowRenderer.drawGlow(g2d, pelletShape, Color.YELLOW, 10);
+
+        g2d.setColor(Color.YELLOW);
+        g2d.fill(pelletShape);
+        g2d.dispose();
     }
 
     public double getX() {

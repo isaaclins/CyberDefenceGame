@@ -6,6 +6,7 @@ import src.entity.Enemy;
 import src.entity.Pellet;
 import src.entity.Player;
 import src.entity.XP;
+import src.entity.Particle;
 
 public class WindowRenderer {
     private int roomWidth;
@@ -20,7 +21,8 @@ public class WindowRenderer {
         this.cameraY = cameraY;
     }
 
-    public void render(Graphics g, List<Enemy> enemies, List<Pellet> pellets, Player player, List<XP> xps) {
+    public void render(Graphics g, List<Enemy> enemies, List<Pellet> pellets, Player player, List<XP> xps,
+            List<Particle> particles) {
         Graphics2D g2d = (Graphics2D) g;
         g2d.translate(-cameraX, -cameraY);
 
@@ -42,6 +44,11 @@ public class WindowRenderer {
         if (xps != null) {
             for (XP xp : xps) {
                 xp.render(g);
+            }
+        }
+        if (particles != null) {
+            for (Particle particle : particles) {
+                particle.render(g);
             }
         }
 

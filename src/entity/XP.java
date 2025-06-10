@@ -2,6 +2,9 @@ package src.entity;
 
 import java.awt.Color;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.geom.Rectangle2D;
+import src.utils.GlowRenderer;
 
 public class XP {
     private double x, y;
@@ -19,8 +22,14 @@ public class XP {
     }
 
     public void render(Graphics g) {
-        g.setColor(Color.GREEN);
-        g.fillRect((int) x - 2, (int) y - 2, 4, 4);
+        Graphics2D g2d = (Graphics2D) g.create();
+        Rectangle2D xpShape = new Rectangle2D.Double(x - 2, y - 2, 4, 4);
+
+        GlowRenderer.drawGlow(g2d, xpShape, Color.GREEN, 8);
+
+        g2d.setColor(Color.GREEN);
+        g2d.fill(xpShape);
+        g2d.dispose();
     }
 
     public void move() {

@@ -24,6 +24,14 @@ public class Particle {
         lifetime--;
     }
 
+    public double getX() {
+        return x;
+    }
+
+    public double getY() {
+        return y;
+    }
+
     public boolean isAlive() {
         return lifetime > 0;
     }

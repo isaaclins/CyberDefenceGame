@@ -60,4 +60,8 @@ public abstract class Gun {
     public boolean isReloading() {
         return reloading;
     }
+
+    public double getSpread() {
+        return spread;
+    }
 }

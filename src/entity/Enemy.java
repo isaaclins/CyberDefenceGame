@@ -4,6 +4,8 @@ import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.geom.AffineTransform;
+import java.awt.geom.Rectangle2D;
+import src.utils.GlowRenderer;
 
 public abstract class Enemy {
     protected double x, y;
@@ -57,10 +59,18 @@ public abstract class Enemy {
         g2d.translate(x, y);
         g2d.rotate(facingAngle);
 
+        Rectangle2D enemyShape = new Rectangle2D.Double(-size / 2, -size / 2, size, size);
+
+        // Use a copy of g2d for glow to avoid stroke issues
+        Graphics2D g2dGlow = (Graphics2D) g2d.create();
+        GlowRenderer.drawGlow(g2dGlow, enemyShape, color, 15);
+        g2dGlow.dispose();
+
         g2d.setColor(color);
-        g2d.fillRect((int) (-size / 2), (int) (-size / 2), (int) size, (int) size);
+        g2d.fill(enemyShape);
 
         g2d.setColor(Color.RED);
+        g2d.setStroke(new java.awt.BasicStroke(1));
         g2d.drawLine(0, 0, (int) (size / 2), 0);
 
         g2d.setTransform(oldTransform);
@@ -84,6 +94,10 @@ public abstract class Enemy {
 
     public int getXpDropAmount() {
         return xpDropAmount;
+    }
+
+    public Color getColor() {
+        return color;
     }
 
     public void setHealth(int health) {
