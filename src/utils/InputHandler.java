@@ -36,6 +36,11 @@ public class InputHandler implements KeyListener, MouseMotionListener, MouseList
         if (code == KeyEvent.VK_ESCAPE || code == KeyEvent.VK_P) {
             game.togglePause();
         }
+
+        if (game.getGameState() == GameState.LEVEL_UP) {
+            game.setGameState(GameState.PLAYING);
+            game.resumeWave();
+        }
     }
 
     @Override

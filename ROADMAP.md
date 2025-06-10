@@ -91,7 +91,7 @@
 ## Player Progression & Upgrades
 
 - [ ] **Level-Up Upgrade System**
-  - [ ] On level up, pause the game and present a choice of 3 random upgrades.
+  - [x] On level up, pause the game and present a choice of 3 random upgrades.
   - [ ] Create a modular system for applying upgrades to player/gun stats.
   - [ ] **Potential Upgrades:**
     - [ ] `+` Bullet Damage

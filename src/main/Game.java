@@ -93,7 +93,7 @@ public class Game extends Canvas {
         Dimension size = new Dimension(WINDOW_WIDTH, WINDOW_HEIGHT);
         setPreferredSize(size);
 
-        window = new GameWindow("Dungeon Crawler", WINDOW_WIDTH, WINDOW_HEIGHT, this);
+        window = new GameWindow("Dungeon Crawler", WINDOW_WIDTH, WINDOW_HEIGHT, this, javax.swing.JFrame.EXIT_ON_CLOSE);
         // Main window always on top (if desired):
         window.setAlwaysOnTop(true);
         initialWindowLocation = window.getLocation();
@@ -207,11 +207,22 @@ public class Game extends Canvas {
             case GAME_OVER:
                 // No updates on game over
                 break;
+            case LEVEL_UP:
+                // No updates while waiting for upgrade choice
+                break;
         }
     }
 
     public void tickPlaying() {
         tickCounter++;
+
+        if (player.getLevelingSystem().hasLeveledUp()) {
+            gameState = GameState.LEVEL_UP;
+            if (waveTimer != null) {
+                waveTimer.cancel();
+            }
+            return;
+        }
 
         if (!transitioning) {
             player.move(upPressed, downPressed, leftPressed, rightPressed);
@@ -534,6 +545,10 @@ public class Game extends Canvas {
                 renderPlaying(g); // Render the game state but don't update it
                 gameOverScreen.render(g, getWidth(), getHeight());
                 break;
+            case LEVEL_UP:
+                renderPlaying(g);
+                renderLevelUpScreen(g);
+                break;
         }
 
         g.dispose();
@@ -591,6 +606,23 @@ public class Game extends Canvas {
         int x = (getWidth() - fm.stringWidth(text)) / 2;
         int y = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
         g.drawString(text, x, y);
+    }
+
+    private void renderLevelUpScreen(Graphics g) {
+        g.setColor(new Color(0, 0, 0, 150));
+        g.fillRect(0, 0, getWidth(), getHeight());
+        g.setColor(Color.WHITE);
+        g.setFont(new Font("Arial", Font.BOLD, 50));
+        String text = "LEVEL UP!";
+        FontMetrics fm = g.getFontMetrics();
+        int x = (getWidth() - fm.stringWidth(text)) / 2;
+        int y = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
+        g.drawString(text, x, y);
+
+        g.setFont(new Font("Arial", Font.PLAIN, 20));
+        String subtext = "Press any key to choose an upgrade (not implemented yet)";
+        int subX = (getWidth() - fm.stringWidth(subtext)) / 2;
+        g.drawString(subtext, subX, y + 50);
     }
 
     private void drawHealth(Graphics g) {
@@ -688,6 +720,10 @@ public class Game extends Canvas {
         return gameState;
     }
 
+    public void setGameState(GameState gameState) {
+        this.gameState = gameState;
+    }
+
     public MenuScreen getMenuScreen() {
         return menuScreen;
     }
@@ -704,6 +740,29 @@ public class Game extends Canvas {
         } else if (gameState == GameState.GAME_OVER) {
             reset();
         }
+    }
+
+    public void resumeWave() {
+        player.getLevelingSystem().resetLevelUpFlag();
+        if (waveTimer != null) {
+            waveTimer.cancel();
+        }
+        waveTimer = new Timer();
+        waveTimer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                if (gameState != GameState.PLAYING)
+                    return;
+
+                if (enemiesToSpawnThisWave > 0 && enemies.size() < 20) {
+                    spawnEnemyNearPlayer();
+                    enemiesToSpawnThisWave--;
+                } else if (enemiesToSpawnThisWave <= 0) {
+                    waveSpawningActive = false;
+                    this.cancel();
+                }
+            }
+        }, 0, 1000);
     }
 
     public void reset() {

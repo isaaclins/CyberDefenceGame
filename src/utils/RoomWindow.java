@@ -26,7 +26,8 @@ public class RoomWindow {
         this.windowHeight = windowHeight;
         canvas = new Canvas();
         canvas.setPreferredSize(new Dimension(windowWidth, windowHeight));
-        window = new GameWindow("Room (" + roomCol + ", " + roomRow + ")", windowWidth, windowHeight, canvas);
+        window = new GameWindow("Room (" + roomCol + ", " + roomRow + ")", windowWidth, windowHeight, canvas,
+                javax.swing.JFrame.DISPOSE_ON_CLOSE);
         canvas.createBufferStrategy(3);
         renderer = new WindowRenderer(canvas, windowWidth, windowHeight, roomCol * windowWidth, roomRow * windowHeight);
     }

@@ -8,14 +8,14 @@ public class GameWindow {
     private final double width;
     private final double height;
 
-    public GameWindow(String title, int width, int height, Canvas canvas) {
+    public GameWindow(String title, int width, int height, Canvas canvas, int defaultCloseOperation) {
         this.width = width;
         this.height = height;
         frame = new JFrame(title);
         frame.setUndecorated(true);
         frame.add(canvas);
         frame.pack();
-        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setDefaultCloseOperation(defaultCloseOperation);
         frame.setLocationRelativeTo(null);
         frame.setVisible(true);
     }
