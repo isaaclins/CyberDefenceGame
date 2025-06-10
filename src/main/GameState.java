@@ -3,5 +3,6 @@ package src.main;
 public enum GameState {
     MENU,
     PLAYING,
-    PAUSED
+    PAUSED,
+    GAME_OVER
 }

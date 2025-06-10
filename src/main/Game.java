@@ -10,6 +10,7 @@ import src.entity.XP;
 import src.entity.Gun;
 import src.entity.Particle;
 import src.screens.MenuScreen;
+import src.screens.GameOverScreen;
 import src.utils.GameWindow;
 import src.utils.Renderer;
 import src.utils.InputHandler;
@@ -37,6 +38,7 @@ public class Game extends Canvas {
 
     private GameState gameState;
     private MenuScreen menuScreen;
+    private GameOverScreen gameOverScreen;
 
     private final int WINDOW_WIDTH;
     private final int WINDOW_HEIGHT;
@@ -62,7 +64,6 @@ public class Game extends Canvas {
     private List<Enemy> enemies;
     private List<XP> xps;
     private List<Particle> particles;
-    private Timer enemySpawnTimer;
     private Random random;
 
     // Map for additional room windows (rooms other than player's)
@@ -73,7 +74,14 @@ public class Game extends Canvas {
     private final long hitCooldown = 1000; // 1 second in milliseconds
     private double screenShakeMagnitude = 10;
     private int screenShakeDuration = 1;
-    private TimerTask enemySpawnTask;
+
+    private int waveNumber = 0;
+    private int enemiesPerWave = 5;
+    private int enemiesToSpawnThisWave;
+    private long timeBetweenWaves = 5000; // 5 seconds
+    private Timer waveTimer;
+    private boolean waveSpawningActive = false;
+    private boolean isWaitingForNextWave = false;
 
     public Game() {
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
@@ -92,6 +100,7 @@ public class Game extends Canvas {
 
         gameState = GameState.MENU;
         menuScreen = new MenuScreen();
+        gameOverScreen = new GameOverScreen();
 
         cameraX = roomCol * roomWidth;
         cameraY = roomRow * roomHeight;
@@ -115,27 +124,46 @@ public class Game extends Canvas {
 
         roomWindows = new HashMap<>();
 
-        startEnemySpawnTimer();
     }
 
-    private void startEnemySpawnTimer() {
-        enemySpawnTimer = new Timer();
-        enemySpawnTask = new TimerTask() {
+    private void startNextWave() {
+        isWaitingForNextWave = false;
+        waveNumber++;
+        enemiesToSpawnThisWave = enemiesPerWave * waveNumber;
+        System.out.println("Starting Wave " + waveNumber);
+        waveSpawningActive = true;
+
+        if (waveTimer != null) {
+            waveTimer.cancel();
+        }
+        waveTimer = new Timer();
+        waveTimer.schedule(new TimerTask() {
             @Override
             public void run() {
-                if (enemies.size() < 10) {
+                if (gameState != GameState.PLAYING)
+                    return;
+
+                if (enemiesToSpawnThisWave > 0 && enemies.size() < 20) { // Max 20 enemies at a time
                     spawnEnemyNearPlayer();
+                    enemiesToSpawnThisWave--;
+                } else if (enemiesToSpawnThisWave <= 0) {
+                    waveSpawningActive = false;
+                    this.cancel(); // Stop this timer task
                 }
             }
-        };
-        enemySpawnTimer.schedule(enemySpawnTask, 0, (2 + random.nextInt(4)) * 1000); // every 2-5 seconds
+        }, 0, 1000); // Spawn one enemy per second
     }
 
     private void spawnEnemyNearPlayer() {
         double playerX = player.getX();
         double playerY = player.getY();
-        double spawnX = playerX + (random.nextDouble() * 200 - 100);
-        double spawnY = playerY + (random.nextDouble() * 200 - 100);
+
+        // Spawn enemies in a ring around the player
+        double spawnRadius = 200 + random.nextDouble() * 200; // 200 to 400 pixels away
+        double spawnAngle = random.nextDouble() * 2 * Math.PI;
+
+        double spawnX = playerX + spawnRadius * Math.cos(spawnAngle);
+        double spawnY = playerY + spawnRadius * Math.sin(spawnAngle);
 
         int enemyType = random.nextInt(3);
         switch (enemyType) {
@@ -158,6 +186,7 @@ public class Game extends Canvas {
     public void startGame(Gun selectedGun) {
         player.setGun(selectedGun);
         gameState = GameState.PLAYING;
+        startNextWave();
     }
 
     public void stop() {
@@ -174,6 +203,9 @@ public class Game extends Canvas {
                 break;
             case PAUSED:
                 // No updates while paused
+                break;
+            case GAME_OVER:
+                // No updates on game over
                 break;
         }
     }
@@ -365,6 +397,30 @@ public class Game extends Canvas {
             }
         }
 
+        if (player.getHealth() <= 0) {
+            gameState = GameState.GAME_OVER;
+            if (waveTimer != null) {
+                waveTimer.cancel();
+            }
+        }
+
+        if (!waveSpawningActive && enemies.isEmpty() && enemiesToSpawnThisWave <= 0 && !isWaitingForNextWave) {
+            isWaitingForNextWave = true;
+            System.out.println("Wave " + waveNumber + " complete!");
+            if (waveTimer != null) {
+                waveTimer.cancel();
+                waveTimer = new Timer();
+                waveTimer.schedule(new TimerTask() {
+                    @Override
+                    public void run() {
+                        if (gameState == GameState.PLAYING) {
+                            startNextWave();
+                        }
+                    }
+                }, timeBetweenWaves);
+            }
+        }
+
         this.requestFocus();
     }
 
@@ -473,6 +529,10 @@ public class Game extends Canvas {
             case PAUSED:
                 renderPlaying(g); // Render the game state but don't update it
                 renderPaused(g);
+                break;
+            case GAME_OVER:
+                renderPlaying(g); // Render the game state but don't update it
+                gameOverScreen.render(g, getWidth(), getHeight());
                 break;
         }
 
@@ -632,14 +692,38 @@ public class Game extends Canvas {
         return menuScreen;
     }
 
+    public GameOverScreen getGameOverScreen() {
+        return gameOverScreen;
+    }
+
     public void togglePause() {
         if (gameState == GameState.PLAYING) {
             gameState = GameState.PAUSED;
-            enemySpawnTimer.cancel();
         } else if (gameState == GameState.PAUSED) {
             gameState = GameState.PLAYING;
-            startEnemySpawnTimer();
+        } else if (gameState == GameState.GAME_OVER) {
+            reset();
         }
+    }
+
+    public void reset() {
+        // Reset player
+        player = new Player(cameraX + 100, cameraY + 100);
+        // Clear all entities
+        pellets.clear();
+        enemies.clear();
+        xps.clear();
+        particles.clear();
+        // Reset game state
+        gameState = GameState.MENU;
+        waveNumber = 0;
+        if (waveTimer != null) {
+            waveTimer.cancel();
+        }
+    }
+
+    public int getWaveNumber() {
+        return waveNumber;
     }
 
     public static void main(String[] args) {

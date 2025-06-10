@@ -77,16 +77,16 @@
   - [x] All game movement and logic should stop.
   - [x] Pressing the key again should resume the game.
 
-- [ ] **Game Over Screen**
+- [x] **Game Over Screen**
 
-  - [ ] When player health reaches zero, the game should end.
-  - [ ] Display a "Game Over" screen with statistics (time survived, enemies defeated, level reached).
-  - [ ] Option to return to the main menu.
+  - [x] When player health reaches zero, the game should end.
+  - [x] Display a "Game Over" screen with statistics (time survived, enemies defeated, level reached).
+  - [x] Option to return to the main menu.
 
-- [ ] **Enemy Wave System**
-  - [ ] Spawn enemies in progressively difficult waves.
-  - [ ] Display current wave number on the HUD.
-  - [ ] Implement a brief pause between waves.
+- [x] **Enemy Wave System**
+  - [x] Spawn enemies in progressively difficult waves.
+  - [x] Display current wave number on the HUD.
+  - [x] Implement a brief pause between waves.
 
 ## Player Progression & Upgrades
 

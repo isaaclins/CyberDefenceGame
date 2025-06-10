@@ -69,6 +69,8 @@ public class InputHandler implements KeyListener, MouseMotionListener, MouseList
     public void mousePressed(MouseEvent e) {
         if (game.getGameState() == GameState.MENU) {
             game.getMenuScreen().handleClick(e.getX(), e.getY(), game);
+        } else if (game.getGameState() == GameState.GAME_OVER) {
+            game.getGameOverScreen().handleClick(e.getX(), e.getY(), game);
         }
     }
 

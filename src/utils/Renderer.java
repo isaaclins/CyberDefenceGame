@@ -92,8 +92,21 @@ public class Renderer {
 
         g2d.translate(game.getCameraX(), game.getCameraY());
 
+        // UI elements that should not move with the camera
+        drawWaveNumber(g);
+
         g.dispose();
         bs.show();
+    }
+
+    private void drawWaveNumber(Graphics g) {
+        String waveText = "Wave: " + game.getWaveNumber();
+        g.setColor(Color.WHITE);
+        g.setFont(new Font("Arial", Font.BOLD, 20));
+        FontMetrics fm = g.getFontMetrics();
+        int x = (game.getWidth() - fm.stringWidth(waveText)) / 2;
+        int y = 30;
+        g.drawString(waveText, x, y);
     }
 
     private void drawHealth(Graphics g, Player player) {
