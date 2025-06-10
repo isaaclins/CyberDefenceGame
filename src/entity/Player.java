@@ -17,6 +17,9 @@ public class Player {
     private final double spinSpeed = 0.1;
     private final double gunFriction = 0.1;
 
+    private int health;
+    private int maxHealth;
+
     private Gun gun;
     private LevelingSystem levelingSystem;
     private final double pickupRadius = 50.0;
@@ -29,6 +32,8 @@ public class Player {
         this.targetGunAngle = 0;
         this.gun = null;
         this.levelingSystem = new LevelingSystem();
+        this.maxHealth = 5;
+        this.health = this.maxHealth;
         updateGunPosition();
     }
 
@@ -75,6 +80,13 @@ public class Player {
         updateGunPosition();
     }
 
+    public void takeDamage(int damage) {
+        this.health -= damage;
+        if (this.health < 0) {
+            this.health = 0;
+        }
+    }
+
     public void applyKnockback(double knockbackX, double knockbackY) {
         this.velocityX += knockbackX;
         this.velocityY += knockbackY;
@@ -90,6 +102,14 @@ public class Player {
 
     public Gun getGun() {
         return gun;
+    }
+
+    public int getHealth() {
+        return health;
+    }
+
+    public int getMaxHealth() {
+        return maxHealth;
     }
 
     public LevelingSystem getLevelingSystem() {

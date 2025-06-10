@@ -8,6 +8,7 @@ import src.main.Game;
 import java.awt.*;
 import java.awt.image.BufferStrategy;
 import java.util.List;
+import src.entity.Gun;
 
 public class Renderer {
     private final Game game;
@@ -74,10 +75,64 @@ public class Renderer {
             xp.render(g);
         }
 
+        drawHealth(g, player);
+        drawAmmo(g, player);
+
         g2d.translate(game.getCameraX(), game.getCameraY());
 
         g.dispose();
         bs.show();
+    }
+
+    private void drawHealth(Graphics g, Player player) {
+        if (player == null)
+            return;
+        int health = player.getHealth();
+        int maxHealth = player.getMaxHealth();
+        int circleSize = 10;
+        int spacing = 5;
+        int totalWidth = (circleSize + spacing) * maxHealth - spacing;
+
+        double playerScreenX = player.getX();
+        double playerScreenY = player.getY();
+
+        int startX = (int) (playerScreenX - totalWidth / 2);
+        int startY = (int) (playerScreenY - 30 - circleSize);
+
+        for (int i = 0; i < maxHealth; i++) {
+            g.setColor(Color.RED);
+            if (i < health) {
+                g.fillOval(startX + i * (circleSize + spacing), startY, circleSize, circleSize);
+            } else {
+                g.drawOval(startX + i * (circleSize + spacing), startY, circleSize, circleSize);
+            }
+        }
+    }
+
+    private void drawAmmo(Graphics g, Player player) {
+        if (player == null || player.getGun() == null)
+            return;
+        Gun gun = player.getGun();
+        int currentAmmo = gun.getCurrentAmmo();
+        int magazineSize = gun.getMagazineSize();
+        if (magazineSize <= 0)
+            return;
+
+        double angleStep = 2 * Math.PI / magazineSize;
+        int ammoCircleRadius = 4;
+        int orbitRadius = 40; // The radius of the circle on which the ammo dots are placed
+
+        double playerScreenX = player.getX();
+        double playerScreenY = player.getY();
+
+        for (int i = 0; i < currentAmmo; i++) {
+            double angle = i * angleStep - Math.PI / 2; // Start from the top
+            int x = (int) (playerScreenX + orbitRadius * Math.cos(angle)) - ammoCircleRadius;
+            int y = (int) (playerScreenY + orbitRadius * Math.sin(angle)) - ammoCircleRadius;
+
+            g.setColor(new Color(255, 255, 255, 150)); // Slightly opaque white
+            g.fillOval(x, y, ammoCircleRadius * 2, ammoCircleRadius * 2);
+        }
     }
 
     private void renderRoom(Graphics g, int col, int row) {

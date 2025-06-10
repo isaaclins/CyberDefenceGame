@@ -48,16 +48,16 @@
   - [x] Create a main menu screen.
   - [x] Implement a modular class selection system. New gun classes should automatically appear as options.
 
-- [ ] **In-Game HUD**
+- [x] **In-Game HUD**
 
-  - [ ] All HUD elements must be positioned relative to the player.
-  - [ ] **Ammo Display**:
+  - [x] All HUD elements must be positioned relative to the player.
+  - [x] **Ammo Display**:
 
-    - [ ] Show small, slightly opaque round circles circling AROUND THE PLAYER for bullets in the magazine.
+    - [x] Show small, slightly opaque round circles circling AROUND THE PLAYER for bullets in the magazine.
 
-  - [ ] **Health Display**:
-    - [ ] Show X red circles on top of the player.
-    - [ ] Filled circles represent current health, hollow circles represent lost health.
+  - [x] **Health Display**:
+    - [x] Show X red circles on top of the player.
+    - [x] Filled circles represent current health, hollow circles represent lost health.
 
 ## Quality of Life (QOL) & Effects
 

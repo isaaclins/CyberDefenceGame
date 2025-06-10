@@ -66,6 +66,9 @@ public class Game extends Canvas {
     private Map<String, RoomWindow> roomWindows;
     private int tickCounter = 0; // Used for cleaning up windows
 
+    private long lastHitTime = 0;
+    private final long hitCooldown = 1000; // 1 second in milliseconds
+
     public Game() {
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
         WINDOW_WIDTH = screenSize.width / 3;
@@ -222,9 +225,16 @@ public class Game extends Canvas {
         }
 
         // Check for collisions between player and enemies
-        for (Enemy enemy : enemies) {
+        Iterator<Enemy> enemyCollisionIterator = enemies.iterator();
+        while (enemyCollisionIterator.hasNext()) {
+            Enemy enemy = enemyCollisionIterator.next();
             if (checkCollision(player, enemy)) {
-                applyKnockbackToPlayer(enemy);
+                long currentTime = System.currentTimeMillis();
+                if (currentTime - lastHitTime > hitCooldown) {
+                    player.takeDamage(enemy.getDamage());
+                    lastHitTime = currentTime;
+                    applyKnockbackToPlayer(enemy);
+                }
             }
         }
 
@@ -432,6 +442,57 @@ public class Game extends Canvas {
 
         // Request focus to keep input on the main window.
         this.requestFocus();
+    }
+
+    private void drawHealth(Graphics g) {
+        if (player == null)
+            return;
+        int health = player.getHealth();
+        int maxHealth = player.getMaxHealth();
+        int circleSize = 10;
+        int spacing = 5;
+        int totalWidth = (circleSize + spacing) * maxHealth - spacing;
+        // Position above the player
+        double playerScreenX = player.getX() - cameraX;
+        double playerScreenY = player.getY() - cameraY;
+
+        int startX = (int) (playerScreenX - totalWidth / 2);
+        int startY = (int) (playerScreenY - 30 - circleSize); // 30 pixels above player
+
+        for (int i = 0; i < maxHealth; i++) {
+            g.setColor(Color.RED);
+            if (i < health) {
+                g.fillOval(startX + i * (circleSize + spacing), startY, circleSize, circleSize);
+            } else {
+                g.drawOval(startX + i * (circleSize + spacing), startY, circleSize, circleSize);
+            }
+        }
+    }
+
+    private void drawAmmo(Graphics g) {
+        if (player == null || player.getGun() == null)
+            return;
+        Gun gun = player.getGun();
+        int currentAmmo = gun.getCurrentAmmo();
+        int magazineSize = gun.getMagazineSize();
+        if (magazineSize <= 0)
+            return;
+
+        double angleStep = 2 * Math.PI / magazineSize;
+        int ammoCircleRadius = 4;
+        int orbitRadius = 25; // The radius of the circle on which the ammo dots are placed
+
+        double playerScreenX = player.getX() - cameraX;
+        double playerScreenY = player.getY() - cameraY;
+
+        for (int i = 0; i < currentAmmo; i++) {
+            double angle = i * angleStep - Math.PI / 2; // Start from the top
+            int x = (int) (playerScreenX + orbitRadius * Math.cos(angle)) - ammoCircleRadius;
+            int y = (int) (playerScreenY + orbitRadius * Math.sin(angle)) - ammoCircleRadius;
+
+            g.setColor(new Color(255, 255, 255, 150)); // Slightly opaque white
+            g.fillOval(x, y, ammoCircleRadius * 2, ammoCircleRadius * 2);
+        }
     }
 
     public int getRoomCol() {
