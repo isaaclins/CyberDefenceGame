@@ -221,6 +221,13 @@ public class Game extends Canvas {
             shoot();
         }
 
+        // Check for collisions between player and enemies
+        for (Enemy enemy : enemies) {
+            if (checkCollision(player, enemy)) {
+                applyKnockbackToPlayer(enemy);
+            }
+        }
+
         // Move pellets and handle collisions with enemies
         Iterator<Pellet> pelletIterator = pellets.iterator();
         while (pelletIterator.hasNext()) {
@@ -276,13 +283,6 @@ public class Game extends Canvas {
         for (Enemy enemy : enemies) {
             enemy.move();
             enemy.moveToPlayer(playerX, playerY);
-        }
-
-        // Check collision between player and enemies
-        for (Enemy enemy : enemies) {
-            if (checkCollision(player, enemy)) {
-                applyKnockbackToPlayer(enemy);
-            }
         }
 
         // Create and manage windows for other rooms
@@ -365,10 +365,16 @@ public class Game extends Canvas {
     }
 
     private void applyKnockbackToPlayer(Enemy enemy) {
-        double angle = Math.atan2(player.getY() - enemy.getY(), player.getX() - enemy.getX());
-        double knockbackX = 0.2 * Math.cos(angle);
-        double knockbackY = 0.2 * Math.sin(angle);
-        player.applyKnockback(knockbackX, knockbackY);
+        double knockbackStrength = 30.0; // Adjust strength as needed
+        double dx = player.getX() - enemy.getX();
+        double dy = player.getY() - enemy.getY();
+        double distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance != 0) {
+            double knockbackX = (dx / distance) * knockbackStrength;
+            double knockbackY = (dy / distance) * knockbackStrength;
+            player.applyKnockback(knockbackX, knockbackY);
+        }
     }
 
     public void render() {

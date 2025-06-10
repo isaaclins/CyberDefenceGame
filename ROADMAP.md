@@ -48,26 +48,76 @@
   - [x] Create a main menu screen.
   - [x] Implement a modular class selection system. New gun classes should automatically appear as options.
 
-- [ ] **Settings Page**
-
-  - [ ] Create a settings page accessible from the menu.
-  - [ ] Implement a toggle for auto-aim and manual-aim.
-
 - [ ] **In-Game HUD**
+
   - [ ] All HUD elements must be positioned relative to the player.
   - [ ] **Ammo Display**:
-    - [ ] Show small round circles for bullets in the magazine.
-    - [ ] The circle for the bullet being fired should be visually distinct/in front.
+
+    - [ ] Show small, slightly opaque round circles circling AROUND THE PLAYER for bullets in the magazine.
+
   - [ ] **Health Display**:
     - [ ] Show X red circles on top of the player.
     - [ ] Filled circles represent current health, hollow circles represent lost health.
 
 ## Quality of Life (QOL) & Effects
 
-- [ ] **Pause Mechanic**
-  - [ ] Implement a pause and resume feature.
 - [ ] **Visual Effects**
+
   - [ ] Add particle effects for gunshots.
   - [ ] Add particle effects for enemy deaths.
   - [ ] Implement a screen shake effect when the player shoots.
   - [ ] Add glow effect for entities (player, enemies, xps, bullets)
+
+## Game Flow & State
+
+- [ ] **Pause & Resume**
+
+  - [ ] Pressing `ESC` or `P` should pause the game.
+  - [ ] A "Paused" message should appear on the screen.
+  - [ ] All game movement and logic should stop.
+  - [ ] Pressing the key again should resume the game.
+
+- [ ] **Game Over Screen**
+
+  - [ ] When player health reaches zero, the game should end.
+  - [ ] Display a "Game Over" screen with statistics (time survived, enemies defeated, level reached).
+  - [ ] Option to return to the main menu.
+
+- [ ] **Enemy Wave System**
+  - [ ] Spawn enemies in progressively difficult waves.
+  - [ ] Display current wave number on the HUD.
+  - [ ] Implement a brief pause between waves.
+
+## Player Progression & Upgrades
+
+- [ ] **Level-Up Upgrade System**
+  - [ ] On level up, pause the game and present a choice of 3 random upgrades.
+  - [ ] Create a modular system for applying upgrades to player/gun stats.
+  - [ ] **Potential Upgrades:**
+    - [ ] `+` Bullet Damage
+    - [ ] `+` Fire Rate
+    - [ ] `+` Reload Speed
+    - [ ] `+` Magazine Size
+    - [ ] `+` Player Speed
+    - [ ] `+` Max Health
+    - [ ] `+` Health Regeneration
+    - [ ] `+` XP Gain
+    - [ ] `+` Bullet Knockback
+    - [ ] `+` Projectile Piercing
+
+## Audio
+
+- [ ] **Sound Effects**
+
+  - [ ] Gunshots (unique per class)
+  - [ ] Reloading
+  - [ ] Player Hit
+  - [ ] Enemy Hit
+  - [ ] Enemy Defeated
+  - [ ] XP Pickup
+  - [ ] Level Up
+  - [ ] UI Button Clicks
+
+- [ ] **Music**
+  - [ ] Main Menu Theme
+  - [ ] Gameplay Loop
