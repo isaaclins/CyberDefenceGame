@@ -1,0 +1,41 @@
+name: Java Startup and Test
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up JDK
+        uses: actions/setup-java@v3
+        with:
+          java-version: "17"
+          distribution: "temurin"
+
+      - name: Download JUnit Platform Console Standalone
+        run: |
+          mkdir -p lib
+          curl -L -o lib/junit-platform-console-standalone-1.10.0.jar https://repo1.maven.org/maven2/org/junit/platform/junit-platform-console-standalone/1.10.0/junit-platform-console-standalone-1.10.0.jar
+
+      - name: Compile
+        run: |
+          mkdir -p out
+          javac -d out -cp .:lib/junit-platform-console-standalone-1.10.0.jar $(find src -name "*.java") $(find test -name "*.java")
+
+      - name: Run tests
+        run: java -jar lib/junit-platform-console-standalone-1.10.0.jar --class-path out --scan-class-path
+
+      - name: Start application in background
+        run: java -cp out src.main.Game &
+
+      - name: Wait for application to start
+        run: sleep 10
+
+      - name: Check if application is running
+        run: pgrep -f "java"

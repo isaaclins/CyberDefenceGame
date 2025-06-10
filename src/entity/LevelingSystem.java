@@ -13,7 +13,7 @@ public class LevelingSystem {
 
     public void addXp(int amount) {
         this.xp += amount;
-        if (this.xp >= xpToNextLevel) {
+        while (this.xp >= xpToNextLevel) {
             levelUp();
         }
     }
