@@ -31,8 +31,11 @@ jobs:
       - name: Run tests
         run: java -jar lib/junit-platform-console-standalone-1.10.0.jar --class-path out --scan-class-path
 
-      - name: Start application in background
-        run: java -cp out src.main.Game &
+      - name: Run GUI App in headless mode
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+          xvfb-run java -cp out src.main.Game &
 
       - name: Wait for application to start
         run: sleep 10
