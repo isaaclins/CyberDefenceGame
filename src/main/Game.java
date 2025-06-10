@@ -73,6 +73,7 @@ public class Game extends Canvas {
     private final long hitCooldown = 1000; // 1 second in milliseconds
     private double screenShakeMagnitude = 10;
     private int screenShakeDuration = 1;
+    private TimerTask enemySpawnTask;
 
     public Game() {
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
@@ -119,14 +120,15 @@ public class Game extends Canvas {
 
     private void startEnemySpawnTimer() {
         enemySpawnTimer = new Timer();
-        enemySpawnTimer.schedule(new TimerTask() {
+        enemySpawnTask = new TimerTask() {
             @Override
             public void run() {
                 if (enemies.size() < 10) {
                     spawnEnemyNearPlayer();
                 }
             }
-        }, 0, (2 + random.nextInt(4)) * 1000); // every 2-5 seconds
+        };
+        enemySpawnTimer.schedule(enemySpawnTask, 0, (2 + random.nextInt(4)) * 1000); // every 2-5 seconds
     }
 
     private void spawnEnemyNearPlayer() {
@@ -169,6 +171,9 @@ public class Game extends Canvas {
                 break;
             case PLAYING:
                 tickPlaying();
+                break;
+            case PAUSED:
+                // No updates while paused
                 break;
         }
     }
@@ -465,6 +470,10 @@ public class Game extends Canvas {
             case PLAYING:
                 renderPlaying(g);
                 break;
+            case PAUSED:
+                renderPlaying(g); // Render the game state but don't update it
+                renderPaused(g);
+                break;
         }
 
         g.dispose();
@@ -510,6 +519,18 @@ public class Game extends Canvas {
 
         // Request focus to keep input on the main window.
         this.requestFocus();
+    }
+
+    private void renderPaused(Graphics g) {
+        g.setColor(new Color(0, 0, 0, 150));
+        g.fillRect(0, 0, getWidth(), getHeight());
+        g.setColor(Color.WHITE);
+        g.setFont(new Font("Arial", Font.BOLD, 50));
+        String text = "PAUSED";
+        FontMetrics fm = g.getFontMetrics();
+        int x = (getWidth() - fm.stringWidth(text)) / 2;
+        int y = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
+        g.drawString(text, x, y);
     }
 
     private void drawHealth(Graphics g) {
@@ -609,6 +630,16 @@ public class Game extends Canvas {
 
     public MenuScreen getMenuScreen() {
         return menuScreen;
+    }
+
+    public void togglePause() {
+        if (gameState == GameState.PLAYING) {
+            gameState = GameState.PAUSED;
+            enemySpawnTimer.cancel();
+        } else if (gameState == GameState.PAUSED) {
+            gameState = GameState.PLAYING;
+            startEnemySpawnTimer();
+        }
     }
 
     public static void main(String[] args) {

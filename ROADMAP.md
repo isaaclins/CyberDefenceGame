@@ -70,12 +70,12 @@
 
 ## Game Flow & State
 
-- [ ] **Pause & Resume**
+- [x] **Pause & Resume**
 
-  - [ ] Pressing `ESC` or `P` should pause the game.
-  - [ ] A "Paused" message should appear on the screen.
-  - [ ] All game movement and logic should stop.
-  - [ ] Pressing the key again should resume the game.
+  - [x] Pressing `ESC` or `P` should pause the game.
+  - [x] A "Paused" message should appear on the screen.
+  - [x] All game movement and logic should stop.
+  - [x] Pressing the key again should resume the game.
 
 - [ ] **Game Over Screen**
 

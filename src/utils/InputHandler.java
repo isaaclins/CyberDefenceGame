@@ -33,6 +33,9 @@ public class InputHandler implements KeyListener, MouseMotionListener, MouseList
             game.setRightPressed(true);
         if (code == KeyEvent.VK_SPACE)
             game.setShooting(true);
+        if (code == KeyEvent.VK_ESCAPE || code == KeyEvent.VK_P) {
+            game.togglePause();
+        }
     }
 
     @Override
