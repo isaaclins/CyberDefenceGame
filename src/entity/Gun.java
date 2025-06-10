@@ -64,4 +64,20 @@ public abstract class Gun {
     public double getSpread() {
         return spread;
     }
+
+    public double getDamage() {
+        return bulletDamage;
+    }
+
+    public void setDamage(double damage) {
+        this.bulletDamage = damage;
+    }
+
+    public double getReloadSpeed() {
+        return reloadSpeed;
+    }
+
+    public void setReloadSpeed(double reloadSpeed) {
+        this.reloadSpeed = reloadSpeed;
+    }
 }

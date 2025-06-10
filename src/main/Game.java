@@ -11,11 +11,13 @@ import src.entity.Gun;
 import src.entity.Particle;
 import src.screens.MenuScreen;
 import src.screens.GameOverScreen;
+import src.screens.UpgradeScreen;
 import src.utils.GameWindow;
 import src.utils.Renderer;
 import src.utils.InputHandler;
 import src.utils.GameLoop;
 import src.utils.RoomWindow;
+import src.utils.UpgradeManager;
 
 import java.awt.*;
 import java.awt.image.BufferStrategy;
@@ -35,10 +37,12 @@ public class Game extends Canvas {
     private GameLoop gameLoop;
     private Renderer renderer;
     private InputHandler inputHandler;
+    private UpgradeManager upgradeManager;
 
     private GameState gameState;
     private MenuScreen menuScreen;
     private GameOverScreen gameOverScreen;
+    private UpgradeScreen upgradeScreen;
 
     private final int WINDOW_WIDTH;
     private final int WINDOW_HEIGHT;
@@ -101,6 +105,7 @@ public class Game extends Canvas {
         gameState = GameState.MENU;
         menuScreen = new MenuScreen();
         gameOverScreen = new GameOverScreen();
+        upgradeScreen = new UpgradeScreen();
 
         cameraX = roomCol * roomWidth;
         cameraY = roomRow * roomHeight;
@@ -116,6 +121,7 @@ public class Game extends Canvas {
         renderer = new Renderer(this, roomWidth, roomHeight);
         inputHandler = new InputHandler(this);
         gameLoop = new GameLoop(this);
+        upgradeManager = new UpgradeManager();
 
         addKeyListener(inputHandler);
         addMouseMotionListener(inputHandler);
@@ -124,6 +130,10 @@ public class Game extends Canvas {
 
         roomWindows = new HashMap<>();
 
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            System.out.println("Shutdown hook ran.");
+            new Exception("Stack trace").printStackTrace();
+        }));
     }
 
     private void startNextWave() {
@@ -140,15 +150,19 @@ public class Game extends Canvas {
         waveTimer.schedule(new TimerTask() {
             @Override
             public void run() {
-                if (gameState != GameState.PLAYING)
-                    return;
+                try {
+                    if (gameState != GameState.PLAYING)
+                        return;
 
-                if (enemiesToSpawnThisWave > 0 && enemies.size() < 20) { // Max 20 enemies at a time
-                    spawnEnemyNearPlayer();
-                    enemiesToSpawnThisWave--;
-                } else if (enemiesToSpawnThisWave <= 0) {
-                    waveSpawningActive = false;
-                    this.cancel(); // Stop this timer task
+                    if (enemiesToSpawnThisWave > 0 && enemies.size() < 20) { // Max 20 enemies at a time
+                        spawnEnemyNearPlayer();
+                        enemiesToSpawnThisWave--;
+                    } else if (enemiesToSpawnThisWave <= 0) {
+                        waveSpawningActive = false;
+                        this.cancel(); // Stop this timer task
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
             }
         }, 0, 1000); // Spawn one enemy per second
@@ -218,6 +232,7 @@ public class Game extends Canvas {
 
         if (player.getLevelingSystem().hasLeveledUp()) {
             gameState = GameState.LEVEL_UP;
+            upgradeScreen.presentUpgrades(this);
             if (waveTimer != null) {
                 waveTimer.cancel();
             }
@@ -424,8 +439,12 @@ public class Game extends Canvas {
                 waveTimer.schedule(new TimerTask() {
                     @Override
                     public void run() {
-                        if (gameState == GameState.PLAYING) {
-                            startNextWave();
+                        try {
+                            if (gameState == GameState.PLAYING) {
+                                startNextWave();
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
                         }
                     }
                 }, timeBetweenWaves);
@@ -547,7 +566,7 @@ public class Game extends Canvas {
                 break;
             case LEVEL_UP:
                 renderPlaying(g);
-                renderLevelUpScreen(g);
+                upgradeScreen.render(g);
                 break;
         }
 
@@ -606,23 +625,6 @@ public class Game extends Canvas {
         int x = (getWidth() - fm.stringWidth(text)) / 2;
         int y = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
         g.drawString(text, x, y);
-    }
-
-    private void renderLevelUpScreen(Graphics g) {
-        g.setColor(new Color(0, 0, 0, 150));
-        g.fillRect(0, 0, getWidth(), getHeight());
-        g.setColor(Color.WHITE);
-        g.setFont(new Font("Arial", Font.BOLD, 50));
-        String text = "LEVEL UP!";
-        FontMetrics fm = g.getFontMetrics();
-        int x = (getWidth() - fm.stringWidth(text)) / 2;
-        int y = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
-        g.drawString(text, x, y);
-
-        g.setFont(new Font("Arial", Font.PLAIN, 20));
-        String subtext = "Press any key to choose an upgrade (not implemented yet)";
-        int subX = (getWidth() - fm.stringWidth(subtext)) / 2;
-        g.drawString(subtext, subX, y + 50);
     }
 
     private void drawHealth(Graphics g) {
@@ -732,6 +734,14 @@ public class Game extends Canvas {
         return gameOverScreen;
     }
 
+    public UpgradeScreen getUpgradeScreen() {
+        return upgradeScreen;
+    }
+
+    public Player getPlayer() {
+        return player;
+    }
+
     public void togglePause() {
         if (gameState == GameState.PLAYING) {
             gameState = GameState.PAUSED;
@@ -751,15 +761,19 @@ public class Game extends Canvas {
         waveTimer.schedule(new TimerTask() {
             @Override
             public void run() {
-                if (gameState != GameState.PLAYING)
-                    return;
+                try {
+                    if (gameState != GameState.PLAYING)
+                        return;
 
-                if (enemiesToSpawnThisWave > 0 && enemies.size() < 20) {
-                    spawnEnemyNearPlayer();
-                    enemiesToSpawnThisWave--;
-                } else if (enemiesToSpawnThisWave <= 0) {
-                    waveSpawningActive = false;
-                    this.cancel();
+                    if (enemiesToSpawnThisWave > 0 && enemies.size() < 20) {
+                        spawnEnemyNearPlayer();
+                        enemiesToSpawnThisWave--;
+                    } else if (enemiesToSpawnThisWave <= 0) {
+                        waveSpawningActive = false;
+                        this.cancel();
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
             }
         }, 0, 1000);
@@ -783,6 +797,10 @@ public class Game extends Canvas {
 
     public int getWaveNumber() {
         return waveNumber;
+    }
+
+    public UpgradeManager getUpgradeManager() {
+        return upgradeManager;
     }
 
     public static void main(String[] args) {

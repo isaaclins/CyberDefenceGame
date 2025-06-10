@@ -36,11 +36,6 @@ public class InputHandler implements KeyListener, MouseMotionListener, MouseList
         if (code == KeyEvent.VK_ESCAPE || code == KeyEvent.VK_P) {
             game.togglePause();
         }
-
-        if (game.getGameState() == GameState.LEVEL_UP) {
-            game.setGameState(GameState.PLAYING);
-            game.resumeWave();
-        }
     }
 
     @Override
@@ -76,6 +71,8 @@ public class InputHandler implements KeyListener, MouseMotionListener, MouseList
             game.getMenuScreen().handleClick(e.getX(), e.getY(), game);
         } else if (game.getGameState() == GameState.GAME_OVER) {
             game.getGameOverScreen().handleClick(e.getX(), e.getY(), game);
+        } else if (game.getGameState() == GameState.LEVEL_UP) {
+            game.getUpgradeScreen().handleClick(e.getX(), e.getY(), game, game.getPlayer());
         }
     }
 
