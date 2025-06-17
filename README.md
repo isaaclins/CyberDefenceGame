@@ -1,81 +1,61 @@
 # Cyber Defence Game
 
-Cyber Defence Game is a simple dungeon crawler game implemented in Java. The player can move around the game window and transition between different rooms.
+A 2D top-down shooter game written in Java. Fight off waves of enemies, level up, and choose upgrades to survive as long as you can.
 
 ## Features
 
-- Player movement using keyboard keys (W, A, S, D)
-- Mouse-controlled gun aiming
-- Room transitions when the player reaches the edges of the current room
+This project is currently under development. Here is a list of current and planned features:
 
-## Requirements
+### Core Gameplay
 
-- Java Development Kit (JDK) 17 or higher
+- **Gun Classes:** Choose between different gun classes like Shotgun, Sniper, and SMG, each with unique stats.
+- **Enemy Variety:** Face off against different types of enemies: Small, Normal, Big, and Bosses.
+- **XP & Leveling:** Gain experience from defeating enemies, level up, and become more powerful.
+- **Upgrades:** When you level up, you can choose from a selection of upgrades to enhance your abilities.
 
-## Setup
+### UI/UX
 
-1. Clone the repository to your local machine.
-2. Ensure you have JDK 17 or higher installed on your system.
-3. Navigate to the project directory.
+- **Main Menu:** A fully functional main menu with class selection.
+- **In-Game HUD:** A dynamic HUD that displays health and ammo around the player.
+- **Pause & Game Over:** Pause the game at any time, and see your stats when the game is over.
 
-## Running the Game
+### Visuals
 
-### Using the Batch Script
+- **Particle Effects:** Visual effects for gunshots and enemy deaths.
+- **Screen Shake:** Feel the impact of your shots with a screen shake effect.
+- **Glow Effects:** Glowing effects for all game entities.
 
-1. Open a terminal or command prompt.
-2. Navigate to the project directory.
-3. Run the `runGame.bat` script:
+## How to Play
 
-```sh
+### Requirements
+
+- Java Development Kit (JDK) installed.
+
+### Running the Game
+
+To run the game, execute the `runGame.sh` script (for Linux/macOS) or `runGame.bat` (for Windows).
+
+**For Linux/macOS:**
+
+```bash
+./runGame.sh
+```
+
+**For Windows:**
+
+```bash
 runGame.bat
 ```
 
-### Manually
-
-1. Open a terminal or command prompt.
-2. Navigate to the project directory.
-3. Compile the Java files:
-
-```sh
-javac -d out src/main/Game.java src/utils/Constants.java
-```
-
-4. Run the game:
-
-```sh
-java -cp out src.main.Game
-```
+This will compile the source code and start the game.
 
 ## Controls
 
-- **W**: Move up
-- **A**: Move left
-- **S**: Move down
-- **D**: Move right
-- **Mouse**: Aim the gun
+- **Movement:** `W`, `A`, `S`, `D`
+- **Shoot:** `Spacebar`
+- **Pause:** `Escape` or `P`
+- **Menus:** Use the `Mouse` to navigate and click on buttons in the menu, game over, and upgrade screens.
 
-## Project Structure
+## Contributing
 
-```
-.idea/
-src/
-    entity/
-        Enemy.java
-        GameWindow.java
-        Player.java
-    main/
-        Game.java
-    utils/
-        Constants.java
-runGame.bat
-README.md
-```
-
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
-
-### Future Ideas:
-![alt text](/img/image.png)
-Game mirrors itself or atleast the enemies
+Contributions are welcome! If you would like to contribute, please fork the repository and submit a pull request.
