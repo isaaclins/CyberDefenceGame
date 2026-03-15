@@ -2,11 +2,11 @@ package src.entity;
 
 import java.awt.Color;
 import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.geom.Ellipse2D;
-import src.utils.GlowRenderer;
 
 public class Pellet {
+    private static final Color PELLET_COLOR = new Color(255, 225, 80);
+    private static final Color PELLET_CORE_COLOR = new Color(255, 255, 220);
+
     private double x, y;
     private double velocityX, velocityY;
     private double damage;
@@ -29,14 +29,16 @@ public class Pellet {
     }
 
     public void render(Graphics g) {
-        Graphics2D g2d = (Graphics2D) g.create();
-        Ellipse2D.Double pelletShape = new Ellipse2D.Double(x - size / 2, y - size / 2, size, size);
+        int drawSize = Math.max(2, (int) Math.round(size));
+        int drawX = (int) Math.round(x - (drawSize / 2.0));
+        int drawY = (int) Math.round(y - (drawSize / 2.0));
+        int coreSize = Math.max(1, drawSize / 2);
+        int coreOffset = (drawSize - coreSize) / 2;
 
-        GlowRenderer.drawGlow(g2d, pelletShape, Color.YELLOW, 10);
-
-        g2d.setColor(Color.YELLOW);
-        g2d.fill(pelletShape);
-        g2d.dispose();
+        g.setColor(PELLET_COLOR);
+        g.fillOval(drawX, drawY, drawSize, drawSize);
+        g.setColor(PELLET_CORE_COLOR);
+        g.fillOval(drawX + coreOffset, drawY + coreOffset, coreSize, coreSize);
     }
 
     public double getX() {
@@ -53,5 +55,9 @@ public class Pellet {
 
     public double getKnockback() {
         return knockback;
+    }
+
+    public double getSize() {
+        return size;
     }
 }

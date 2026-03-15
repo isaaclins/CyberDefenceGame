@@ -4,112 +4,89 @@ import src.entity.Enemy;
 import src.entity.Pellet;
 import src.entity.Player;
 import src.entity.XP;
-import src.main.Game;
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics2D;
 import java.awt.geom.Rectangle2D;
-import java.awt.image.BufferStrategy;
-import java.util.List;
+import java.util.Map;
+
 import src.entity.Gun;
 import src.entity.Particle;
 
 public class Renderer {
-    private final Game game;
+    private static final Font LEVEL_FONT = new Font("Arial", Font.BOLD, 14);
+    private static final Font WAVE_FONT = new Font("Arial", Font.BOLD, 20);
+    private static final Font LEVEL_PROGRESS_FONT = new Font("Arial", Font.PLAIN, 15);
+    private static final Color ROOM_COLOR = new Color(30, 30, 30);
+    private static final Color XP_BAR_BACKGROUND = new Color(70, 70, 70, 220);
+    private static final Color XP_BAR_COLOR = new Color(64, 220, 120);
+    private static final Color AMMO_COLOR = new Color(255, 255, 255, 150);
+
     private final int roomWidth;
     private final int roomHeight;
 
-    public Renderer(Game game, int roomWidth, int roomHeight) {
-        this.game = game;
+    public Renderer(int roomWidth, int roomHeight) {
         this.roomWidth = roomWidth;
         this.roomHeight = roomHeight;
     }
 
-    public void render(Player player, List<Enemy> enemies, List<Pellet> pellets, List<XP> xps,
-            List<Particle> particles) {
-        BufferStrategy bs = game.getBufferStrategy();
-        if (bs == null) {
-            game.createBufferStrategy(3);
-            return;
-        }
-        Graphics g = bs.getDrawGraphics();
+    public void render(Graphics2D g2d, Player player, Map<String, RoomRenderBucket> roomBuckets, int roomCol,
+            int roomRow) {
+        renderRoomAndContents(g2d, roomBuckets, roomCol, roomRow);
+        renderRoomAndContents(g2d, roomBuckets, roomCol - 1, roomRow);
+        renderRoomAndContents(g2d, roomBuckets, roomCol + 1, roomRow);
+        renderRoomAndContents(g2d, roomBuckets, roomCol, roomRow - 1);
+        renderRoomAndContents(g2d, roomBuckets, roomCol, roomRow + 1);
 
-        g.setColor(Color.BLACK);
-        g.fillRect(0, 0, game.getWidth(), game.getHeight());
-
-        Graphics2D g2d = (Graphics2D) g;
-        g2d.translate(-game.getCameraX(), -game.getCameraY());
-
-        // Render the current room and neighbors.
-        renderRoom(g2d, game.getRoomCol(), game.getRoomRow());
-        renderRoom(g2d, game.getRoomCol() - 1, game.getRoomRow());
-        renderRoom(g2d, game.getRoomCol() + 1, game.getRoomRow());
-        renderRoom(g2d, game.getRoomCol(), game.getRoomRow() - 1);
-        renderRoom(g2d, game.getRoomCol(), game.getRoomRow() + 1);
-
-        // Render player with glow
-        Rectangle2D playerShape = new Rectangle.Double(player.getX() - 10, player.getY() - 10, 20, 20);
-        GlowRenderer.drawGlow(g2d, playerShape, Color.RED, 10);
+        Rectangle2D playerShape = new Rectangle2D.Double(player.getX() - 10, player.getY() - 10, 20, 20);
+        GlowRenderer.drawGlow(g2d, playerShape, Color.RED, 5);
         g2d.setColor(Color.RED);
         g2d.fill(playerShape);
 
-        // Draw player level
-        String levelStr = "Lvl " + player.getLevelingSystem().getLevel();
-        g.setColor(Color.WHITE);
-        FontMetrics fm = g.getFontMetrics();
-        int strWidth = fm.stringWidth(levelStr);
-        g.drawString(levelStr, (int) player.getX() - strWidth / 2, (int) player.getY() + fm.getAscent() / 2);
+        drawPlayerHud(g2d, player);
 
-        // Draw XP bar
-        double xpPercentage = (double) player.getLevelingSystem().getXp()
-                / player.getLevelingSystem().getXpToNextLevel();
-        g.setColor(Color.GRAY);
-        g.fillRect((int) player.getX() - 15, (int) player.getY() + 15, 30, 5);
-        g.setColor(Color.GREEN);
-        g.fillRect((int) player.getX() - 15, (int) player.getY() + 15, (int) (30 * xpPercentage), 5);
-
-        // Render gun with glow
-        Rectangle2D gunShape = new Rectangle.Double(player.getGunX() - 5, player.getGunY() - 5, 10, 10);
-        GlowRenderer.drawGlow(g2d, gunShape, Color.BLUE, 8);
+        Rectangle2D gunShape = new Rectangle2D.Double(player.getGunX() - 5, player.getGunY() - 5, 10, 10);
+        GlowRenderer.drawGlow(g2d, gunShape, Color.BLUE, 4);
         g2d.setColor(Color.BLUE);
         g2d.fill(gunShape);
-
-        // Render enemies and pellets.
-        for (Enemy enemy : enemies) {
-            enemy.render(g);
-        }
-        for (Pellet pellet : pellets) {
-            pellet.render(g);
-        }
-        for (XP xp : xps) {
-            xp.render(g);
-        }
-
-        for (Particle particle : particles) {
-            particle.render(g);
-        }
-
-        drawHealth(g, player);
-        drawAmmo(g, player);
-
-        g2d.translate(game.getCameraX(), game.getCameraY());
-
-        // UI elements that should not move with the camera
-        drawWaveNumber(g);
-
-        g.dispose();
-        bs.show();
     }
 
-    private void drawWaveNumber(Graphics g) {
-        String waveText = "Wave: " + game.getWaveNumber();
-        g.setColor(Color.WHITE);
-        g.setFont(new Font("Arial", Font.BOLD, 20));
-        FontMetrics fm = g.getFontMetrics();
-        int x = (game.getWidth() - fm.stringWidth(waveText)) / 2;
-        int y = 30;
-        g.drawString(waveText, x, y);
+    public void drawWaveNumber(Graphics2D g2d, int screenWidth, int waveNumber, int killsToNextLevel) {
+        String waveText = "Wave: " + waveNumber;
+        g2d.setColor(Color.WHITE);
+        g2d.setFont(WAVE_FONT);
+        FontMetrics fm = g2d.getFontMetrics();
+        int x = (screenWidth - fm.stringWidth(waveText)) / 2;
+        g2d.drawString(waveText, x, 30);
+
+        String levelText = "Next Level: ~" + killsToNextLevel + " kills";
+        g2d.setFont(LEVEL_PROGRESS_FONT);
+        fm = g2d.getFontMetrics();
+        x = (screenWidth - fm.stringWidth(levelText)) / 2;
+        g2d.drawString(levelText, x, 52);
     }
 
-    private void drawHealth(Graphics g, Player player) {
+    private void drawPlayerHud(Graphics2D g2d, Player player) {
+        String levelStr = "Lvl " + player.getLevelingSystem().getLevel();
+        g2d.setColor(Color.WHITE);
+        g2d.setFont(LEVEL_FONT);
+        FontMetrics fm = g2d.getFontMetrics();
+        int strWidth = fm.stringWidth(levelStr);
+        g2d.drawString(levelStr, (int) player.getX() - strWidth / 2, (int) player.getY() + fm.getAscent() / 2);
+
+        double xpPercentage = (double) player.getLevelingSystem().getXp()
+                / player.getLevelingSystem().getXpToNextLevel();
+        g2d.setColor(XP_BAR_BACKGROUND);
+        g2d.fillRect((int) player.getX() - 15, (int) player.getY() + 15, 30, 5);
+        g2d.setColor(XP_BAR_COLOR);
+        g2d.fillRect((int) player.getX() - 15, (int) player.getY() + 15, (int) (30 * xpPercentage), 5);
+
+        drawHealth(g2d, player);
+        drawAmmo(g2d, player);
+    }
+
+    private void drawHealth(Graphics2D g2d, Player player) {
         if (player == null)
             return;
         int health = player.getHealth();
@@ -125,16 +102,16 @@ public class Renderer {
         int startY = (int) (playerScreenY - 30 - circleSize);
 
         for (int i = 0; i < maxHealth; i++) {
-            g.setColor(Color.RED);
+            g2d.setColor(Color.RED);
             if (i < health) {
-                g.fillOval(startX + i * (circleSize + spacing), startY, circleSize, circleSize);
+                g2d.fillOval(startX + i * (circleSize + spacing), startY, circleSize, circleSize);
             } else {
-                g.drawOval(startX + i * (circleSize + spacing), startY, circleSize, circleSize);
+                g2d.drawOval(startX + i * (circleSize + spacing), startY, circleSize, circleSize);
             }
         }
     }
 
-    private void drawAmmo(Graphics g, Player player) {
+    private void drawAmmo(Graphics2D g2d, Player player) {
         if (player == null || player.getGun() == null)
             return;
         Gun gun = player.getGun();
@@ -155,17 +132,42 @@ public class Renderer {
             int x = (int) (playerScreenX + orbitRadius * Math.cos(angle)) - ammoCircleRadius;
             int y = (int) (playerScreenY + orbitRadius * Math.sin(angle)) - ammoCircleRadius;
 
-            g.setColor(new Color(255, 255, 255, 150)); // Slightly opaque white
-            g.fillOval(x, y, ammoCircleRadius * 2, ammoCircleRadius * 2);
+            g2d.setColor(AMMO_COLOR);
+            g2d.fillOval(x, y, ammoCircleRadius * 2, ammoCircleRadius * 2);
         }
     }
 
-    private void renderRoom(Graphics g, int col, int row) {
+    private void renderRoomAndContents(Graphics2D g2d, Map<String, RoomRenderBucket> roomBuckets, int col, int row) {
+        renderRoom(g2d, col, row);
+        RoomRenderBucket bucket = roomBuckets.get(RoomRenderBucket.key(col, row));
+        if (bucket == null) {
+            return;
+        }
+
+        renderBucket(g2d, bucket);
+    }
+
+    private void renderBucket(Graphics2D g2d, RoomRenderBucket bucket) {
+        for (Enemy enemy : bucket.getEnemies()) {
+            enemy.render(g2d);
+        }
+        for (Pellet pellet : bucket.getPellets()) {
+            pellet.render(g2d);
+        }
+        for (XP xp : bucket.getXps()) {
+            xp.render(g2d);
+        }
+        for (Particle particle : bucket.getParticles()) {
+            particle.render(g2d);
+        }
+    }
+
+    private void renderRoom(Graphics2D g2d, int col, int row) {
         int roomX = col * roomWidth;
         int roomY = row * roomHeight;
-        g.setColor(new Color(30, 30, 30));
-        g.fillRect(roomX, roomY, roomWidth, roomHeight);
-        g.setColor(Color.GRAY);
-        g.drawRect(roomX, roomY, roomWidth, roomHeight);
+        g2d.setColor(ROOM_COLOR);
+        g2d.fillRect(roomX, roomY, roomWidth, roomHeight);
+        g2d.setColor(Color.GRAY);
+        g2d.drawRect(roomX, roomY, roomWidth, roomHeight);
     }
 }

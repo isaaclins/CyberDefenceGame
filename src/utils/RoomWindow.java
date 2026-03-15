@@ -1,23 +1,16 @@
 package src.utils;
 
-import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferStrategy;
-import java.util.List;
-import src.entity.Enemy;
-import src.entity.Pellet;
-import src.entity.Player;
-import src.entity.XP;
-import src.entity.Particle;
 
 public class RoomWindow {
-    private GameWindow window;
-    private Canvas canvas;
-    private WindowRenderer renderer;
-    private int roomCol;
-    private int roomRow;
-    private int windowWidth;
-    private int windowHeight;
+    private final GameWindow window;
+    private final Canvas canvas;
+    private final WindowRenderer renderer;
+    private final int roomCol;
+    private final int roomRow;
+    private final int windowWidth;
+    private final int windowHeight;
 
     public RoomWindow(int roomCol, int roomRow, int windowWidth, int windowHeight) {
         this.roomCol = roomCol;
@@ -25,32 +18,33 @@ public class RoomWindow {
         this.windowWidth = windowWidth;
         this.windowHeight = windowHeight;
         canvas = new Canvas();
+        canvas.setFocusable(false);
         canvas.setPreferredSize(new Dimension(windowWidth, windowHeight));
         window = new GameWindow("Room (" + roomCol + ", " + roomRow + ")", windowWidth, windowHeight, canvas,
-                javax.swing.JFrame.DISPOSE_ON_CLOSE);
+                javax.swing.JFrame.DISPOSE_ON_CLOSE, false);
         canvas.createBufferStrategy(3);
-        renderer = new WindowRenderer(canvas, windowWidth, windowHeight, roomCol * windowWidth, roomRow * windowHeight);
+        renderer = new WindowRenderer(windowWidth, windowHeight, roomCol * windowWidth, roomRow * windowHeight);
     }
 
     public void setLocation(int x, int y) {
         window.setLocation(x, y);
     }
 
-    public void render(List<Enemy> enemies, List<Pellet> pellets, List<XP> xps, List<Particle> particles) {
+    public void render(RoomRenderBucket bucket) {
         BufferStrategy bs = canvas.getBufferStrategy();
         if (bs == null) {
             canvas.createBufferStrategy(3);
             return;
         }
-        Graphics g = null;
+        Graphics2D g2d = null;
         try {
-            g = bs.getDrawGraphics();
-            g.setColor(Color.BLACK);
-            g.fillRect(0, 0, windowWidth, windowHeight);
-            renderer.render(g, enemies, pellets, null, xps, particles);
+            g2d = (Graphics2D) bs.getDrawGraphics();
+            g2d.setColor(Color.BLACK);
+            g2d.fillRect(0, 0, windowWidth, windowHeight);
+            renderer.render(g2d, bucket);
         } finally {
-            if (g != null) {
-                g.dispose();
+            if (g2d != null) {
+                g2d.dispose();
             }
             bs.show();
         }

@@ -1,66 +1,56 @@
 package src.utils;
 
-import java.awt.*;
-import java.util.List;
+import java.awt.Color;
+import java.awt.Graphics2D;
+
 import src.entity.Enemy;
-import src.entity.Pellet;
-import src.entity.Player;
-import src.entity.XP;
 import src.entity.Particle;
+import src.entity.Pellet;
+import src.entity.XP;
 
 public class WindowRenderer {
-    private int roomWidth;
-    private int roomHeight;
-    private double cameraX;
-    private double cameraY;
+    private static final Color ROOM_COLOR = new Color(30, 30, 30);
 
-    public WindowRenderer(Canvas canvas, int roomWidth, int roomHeight, double cameraX, double cameraY) {
+    private final int roomWidth;
+    private final int roomHeight;
+    private final double cameraX;
+    private final double cameraY;
+
+    public WindowRenderer(int roomWidth, int roomHeight, double cameraX, double cameraY) {
         this.roomWidth = roomWidth;
         this.roomHeight = roomHeight;
         this.cameraX = cameraX;
         this.cameraY = cameraY;
     }
 
-    public void render(Graphics g, List<Enemy> enemies, List<Pellet> pellets, Player player, List<XP> xps,
-            List<Particle> particles) {
-        Graphics2D g2d = (Graphics2D) g;
+    public void render(Graphics2D g2d, RoomRenderBucket bucket) {
         g2d.translate(-cameraX, -cameraY);
-
         renderRoom(g2d, (int) (cameraX / roomWidth), (int) (cameraY / roomHeight));
 
-        if (player != null) {
-            g.setColor(Color.RED);
-            g.fillRect((int) player.getX() - 10, (int) player.getY() - 10, 20, 20);
-            g.setColor(Color.BLUE);
-            g.fillRect((int) player.getGunX() - 5, (int) player.getGunY() - 5, 10, 10);
-        }
-
-        for (Enemy enemy : enemies) {
-            enemy.render(g);
-        }
-        for (Pellet pellet : pellets) {
-            pellet.render(g);
-        }
-        if (xps != null) {
-            for (XP xp : xps) {
-                xp.render(g);
+        if (bucket != null) {
+            for (Enemy enemy : bucket.getEnemies()) {
+                enemy.render(g2d);
             }
-        }
-        if (particles != null) {
-            for (Particle particle : particles) {
-                particle.render(g);
+            for (Pellet pellet : bucket.getPellets()) {
+                pellet.render(g2d);
+            }
+            for (XP xp : bucket.getXps()) {
+                xp.render(g2d);
+            }
+            for (Particle particle : bucket.getParticles()) {
+                particle.render(g2d);
             }
         }
 
         g2d.translate(cameraX, cameraY);
     }
 
-    private void renderRoom(Graphics g, int col, int row) {
+    private void renderRoom(Graphics2D g2d, int col, int row) {
         int roomX = col * roomWidth;
         int roomY = row * roomHeight;
-        g.setColor(new Color(30, 30, 30));
-        g.fillRect(roomX, roomY, roomWidth, roomHeight);
-        g.setColor(Color.GRAY);
-        g.drawRect(roomX, roomY, roomWidth, roomHeight);
+        g2d.setColor(ROOM_COLOR);
+        g2d.fillRect(roomX, roomY, roomWidth, roomHeight);
+        g2d.setColor(Color.GRAY);
+        g2d.drawRect(roomX, roomY, roomWidth, roomHeight);
     }
 }

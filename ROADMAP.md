@@ -61,7 +61,7 @@
 
 ## Quality of Life (QOL) & Effects
 
-- [ ] **Visual Effects**
+- [x] **Visual Effects**
 
   - [x] Add particle effects for gunshots.
   - [x] Add particle effects for enemy deaths.

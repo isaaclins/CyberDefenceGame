@@ -7,6 +7,8 @@ import java.awt.geom.Rectangle2D;
 import src.utils.GlowRenderer;
 
 public class XP {
+    private static final Color XP_COLOR = new Color(96, 255, 128);
+
     private double x, y;
     private int amount;
     private double velocityX, velocityY;
@@ -22,14 +24,13 @@ public class XP {
     }
 
     public void render(Graphics g) {
-        Graphics2D g2d = (Graphics2D) g.create();
+        Graphics2D g2d = (Graphics2D) g;
         Rectangle2D xpShape = new Rectangle2D.Double(x - 2, y - 2, 4, 4);
 
-        GlowRenderer.drawGlow(g2d, xpShape, Color.GREEN, 8);
+        GlowRenderer.drawGlow(g2d, xpShape, XP_COLOR, 4);
 
-        g2d.setColor(Color.GREEN);
+        g2d.setColor(XP_COLOR);
         g2d.fill(xpShape);
-        g2d.dispose();
     }
 
     public void move() {
@@ -40,9 +41,16 @@ public class XP {
     }
 
     public void moveTo(double targetX, double targetY) {
-        double angle = Math.atan2(targetY - y, targetX - x);
-        velocityX += speed * Math.cos(angle);
-        velocityY += speed * Math.sin(angle);
+        double dx = targetX - x;
+        double dy = targetY - y;
+        double distanceSquared = (dx * dx) + (dy * dy);
+        if (distanceSquared <= 0.0001) {
+            return;
+        }
+
+        double distance = Math.sqrt(distanceSquared);
+        velocityX += speed * (dx / distance);
+        velocityY += speed * (dy / distance);
     }
 
     public double getX() {

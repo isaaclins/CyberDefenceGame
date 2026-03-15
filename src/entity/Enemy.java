@@ -3,11 +3,14 @@ package src.entity;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Stroke;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Rectangle2D;
 import src.utils.GlowRenderer;
 
 public abstract class Enemy {
+    private static final Stroke FACING_STROKE = new java.awt.BasicStroke(1f);
+
     protected double x, y;
     protected double velocityX, velocityY;
     protected int health;
@@ -41,10 +44,17 @@ public abstract class Enemy {
     }
 
     public void moveToPlayer(double playerX, double playerY) {
-        double angle = Math.atan2(playerY - y, playerX - x);
-        velocityX += speed * Math.cos(angle);
-        velocityY += speed * Math.sin(angle);
-        facingAngle = angle;
+        double dx = playerX - x;
+        double dy = playerY - y;
+        double distanceSquared = (dx * dx) + (dy * dy);
+        if (distanceSquared <= 0.0001) {
+            return;
+        }
+
+        double distance = Math.sqrt(distanceSquared);
+        velocityX += speed * (dx / distance);
+        velocityY += speed * (dy / distance);
+        facingAngle = Math.atan2(dy, dx);
     }
 
     public void applyKnockback(double knockbackX, double knockbackY) {
@@ -55,24 +65,22 @@ public abstract class Enemy {
     public void render(Graphics g) {
         Graphics2D g2d = (Graphics2D) g;
         AffineTransform oldTransform = g2d.getTransform();
+        Stroke oldStroke = g2d.getStroke();
 
         g2d.translate(x, y);
         g2d.rotate(facingAngle);
 
         Rectangle2D enemyShape = new Rectangle2D.Double(-size / 2, -size / 2, size, size);
 
-        // Use a copy of g2d for glow to avoid stroke issues
-        Graphics2D g2dGlow = (Graphics2D) g2d.create();
-        GlowRenderer.drawGlow(g2dGlow, enemyShape, color, 15);
-        g2dGlow.dispose();
-
+        GlowRenderer.drawGlow(g2d, enemyShape, color, 5);
         g2d.setColor(color);
         g2d.fill(enemyShape);
 
         g2d.setColor(Color.RED);
-        g2d.setStroke(new java.awt.BasicStroke(1));
+        g2d.setStroke(FACING_STROKE);
         g2d.drawLine(0, 0, (int) (size / 2), 0);
 
+        g2d.setStroke(oldStroke);
         g2d.setTransform(oldTransform);
     }
 
@@ -98,6 +106,10 @@ public abstract class Enemy {
 
     public Color getColor() {
         return color;
+    }
+
+    public double getSize() {
+        return size;
     }
 
     public void setHealth(int health) {

@@ -1,14 +1,11 @@
 package src.entity;
 
 import src.entity.Gun;
-import src.entity.SMG;
-import src.entity.Shotgun;
-import src.entity.Sniper;
 
 public class Player {
     private double x, y;
     private double velocityX = 0, velocityY = 0;
-    private final double acceleration = 0.5;
+    private double acceleration = 0.5;
     private final double friction = 0.90;
     private double gunX, gunY;
     private double gunAngle;
@@ -22,8 +19,8 @@ public class Player {
 
     private Gun gun;
     private LevelingSystem levelingSystem;
-    private final double pickupRadius = 50.0;
-    private final double attractionRadius = 150.0;
+    private final double pickupRadius = 65.0;
+    private final double attractionRadius = 190.0;
 
     public Player(double startX, double startY) {
         this.x = startX;
@@ -56,7 +53,17 @@ public class Player {
     }
 
     public java.util.ArrayList<Pellet> shoot() {
+        if (gun == null) {
+            return new java.util.ArrayList<>();
+        }
         return gun.shoot(gunX, gunY, gunAngle);
+    }
+
+    public boolean tickGun() {
+        if (gun == null) {
+            return false;
+        }
+        return gun.tick();
     }
 
     public void updateGunPosition() {
@@ -138,13 +145,27 @@ public class Player {
 
     public void setX(double x) {
         this.x = x;
+        updateGunPosition();
     }
 
     public void setY(double y) {
         this.y = y;
+        updateGunPosition();
     }
 
     public void setGun(Gun gun) {
         this.gun = gun;
+    }
+
+    public void increaseMaxHealth(int amount) {
+        if (amount <= 0) {
+            return;
+        }
+        maxHealth += amount;
+        health = Math.min(maxHealth, health + amount);
+    }
+
+    public void increaseAcceleration(double amount) {
+        acceleration = Math.max(0.1, acceleration + amount);
     }
 }

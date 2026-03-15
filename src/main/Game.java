@@ -1,91 +1,92 @@
 package src.main;
 
-import src.entity.Player;
-import src.entity.Enemy;
-import src.entity.Pellet;
-import src.entity.BigEnemy;
-import src.entity.NormalEnemy;
-import src.entity.SmallEnemy;
-import src.entity.XP;
-import src.entity.Gun;
-import src.entity.Particle;
-import src.screens.MenuScreen;
-import src.screens.GameOverScreen;
-import src.screens.UpgradeScreen;
-import src.utils.GameWindow;
-import src.utils.Renderer;
-import src.utils.InputHandler;
-import src.utils.GameLoop;
-import src.utils.RoomWindow;
-import src.utils.UpgradeManager;
-
-import java.awt.*;
+import java.awt.Canvas;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics2D;
+import java.awt.Point;
+import java.awt.Toolkit;
 import java.awt.image.BufferStrategy;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Random;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.Map;
-import java.util.HashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.stream.Collectors;
+import java.util.Random;
+import java.util.Set;
+
+import src.entity.Enemy;
+import src.entity.Gun;
+import src.entity.Particle;
+import src.entity.Pellet;
+import src.entity.Player;
+import src.entity.SMG;
+import src.entity.Shotgun;
+import src.entity.Sniper;
+import src.entity.XP;
+import src.screens.GameOverScreen;
+import src.screens.MenuScreen;
+import src.screens.UpgradeScreen;
+import src.utils.AudioManager;
+import src.utils.EffectManager;
+import src.utils.GameLoop;
+import src.utils.GameWindow;
+import src.utils.InputHandler;
+import src.utils.Renderer;
+import src.utils.RoomRenderBucket;
+import src.utils.RoomWindow;
+import src.utils.SessionStats;
+import src.utils.UpgradeManager;
+import src.utils.WaveDirector;
 
 public class Game extends Canvas {
-    private GameWindow window;
-    private GameLoop gameLoop;
-    private Renderer renderer;
-    private InputHandler inputHandler;
-    private UpgradeManager upgradeManager;
+    private static final Font PAUSE_FONT = new Font("Arial", Font.BOLD, 50);
+    private static final Font INTER_WAVE_FONT = new Font("Arial", Font.PLAIN, 16);
+    private static final int PLAYER_COLLISION_RADIUS = 10;
+    private static final int HIT_COOLDOWN_TICKS = 60;
+    private static final int GAME_START_GRACE_TICKS = 120;
+    private static final int ROOM_TRANSITION_GRACE_TICKS = 36;
 
-    private GameState gameState;
-    private MenuScreen menuScreen;
-    private GameOverScreen gameOverScreen;
-    private UpgradeScreen upgradeScreen;
-
+    private final GameWindow window;
+    private final GameLoop gameLoop;
+    private final Renderer renderer;
+    private final InputHandler inputHandler;
+    private final UpgradeManager upgradeManager;
+    private final AudioManager audioManager;
+    private final EffectManager effectManager;
+    private final WaveDirector waveDirector;
+    private final SessionStats sessionStats;
+    private final MenuScreen menuScreen;
+    private final GameOverScreen gameOverScreen;
+    private final UpgradeScreen upgradeScreen;
+    private final Random random = new Random();
+    private final List<Pellet> pellets = new ArrayList<>();
+    private final List<Enemy> enemies = new ArrayList<>();
+    private final List<XP> xps = new ArrayList<>();
+    private final Map<String, RoomWindow> roomWindows = new HashMap<>();
+    private final Map<String, RoomRenderBucket> roomBuckets = new HashMap<>();
     private final int WINDOW_WIDTH;
     private final int WINDOW_HEIGHT;
+    private final int roomWidth;
+    private final int roomHeight;
+    private final Point initialWindowLocation;
 
-    private Point initialWindowLocation;
-
+    private GameState gameState;
     private Player player;
-
-    private final int roomWidth, roomHeight;
-    private int roomCol = 0, roomRow = 0;
-
-    private double cameraX, cameraY;
-
-    private boolean transitioning = false;
-    private final double transitionSpeed = 20.0;
-    private double targetCameraX, targetCameraY;
-
-    private boolean upPressed, downPressed, leftPressed, rightPressed;
-    private boolean shooting = false;
-    private double mouseX, mouseY;
-
-    private List<Pellet> pellets;
-    private List<Enemy> enemies;
-    private List<XP> xps;
-    private List<Particle> particles;
-    private Random random;
-
-    // Map for additional room windows (rooms other than player's)
-    private Map<String, RoomWindow> roomWindows;
-    private int tickCounter = 0; // Used for cleaning up windows
-
-    private long lastHitTime = 0;
-    private final long hitCooldown = 1000; // 1 second in milliseconds
-    private double screenShakeMagnitude = 10;
-    private int screenShakeDuration = 1;
-
-    private int waveNumber = 0;
-    private int enemiesPerWave = 5;
-    private int enemiesToSpawnThisWave;
-    private long timeBetweenWaves = 5000; // 5 seconds
-    private Timer waveTimer;
-    private boolean waveSpawningActive = false;
-    private boolean isWaitingForNextWave = false;
+    private double cameraX;
+    private double cameraY;
+    private int roomCol;
+    private int roomRow;
+    private boolean upPressed;
+    private boolean downPressed;
+    private boolean leftPressed;
+    private boolean rightPressed;
+    private boolean shooting;
+    private int hitCooldownTicksRemaining;
+    private int playerGraceTicksRemaining;
 
     public Game() {
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
@@ -96,156 +97,455 @@ public class Game extends Canvas {
 
         Dimension size = new Dimension(WINDOW_WIDTH, WINDOW_HEIGHT);
         setPreferredSize(size);
+        setIgnoreRepaint(true);
 
         window = new GameWindow("Dungeon Crawler", WINDOW_WIDTH, WINDOW_HEIGHT, this, javax.swing.JFrame.EXIT_ON_CLOSE);
-        // Main window always on top (if desired):
         window.setAlwaysOnTop(true);
         initialWindowLocation = window.getLocation();
 
-        gameState = GameState.MENU;
         menuScreen = new MenuScreen();
         gameOverScreen = new GameOverScreen();
         upgradeScreen = new UpgradeScreen();
-
-        cameraX = roomCol * roomWidth;
-        cameraY = roomRow * roomHeight;
-
-        player = new Player(cameraX + 100, cameraY + 100);
-
-        pellets = new ArrayList<>();
-        enemies = new CopyOnWriteArrayList<>();
-        xps = new ArrayList<>();
-        particles = new ArrayList<>();
-        random = new Random();
-
-        renderer = new Renderer(this, roomWidth, roomHeight);
+        upgradeManager = new UpgradeManager();
+        audioManager = new AudioManager();
+        effectManager = new EffectManager();
+        waveDirector = new WaveDirector();
+        sessionStats = new SessionStats();
+        renderer = new Renderer(roomWidth, roomHeight);
         inputHandler = new InputHandler(this);
         gameLoop = new GameLoop(this);
-        upgradeManager = new UpgradeManager();
 
         addKeyListener(inputHandler);
         addMouseMotionListener(inputHandler);
         addMouseListener(inputHandler);
         setFocusable(true);
 
-        roomWindows = new HashMap<>();
-
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            System.out.println("Shutdown hook ran.");
-            new Exception("Stack trace").printStackTrace();
-        }));
-    }
-
-    private void startNextWave() {
-        isWaitingForNextWave = false;
-        waveNumber++;
-        enemiesToSpawnThisWave = enemiesPerWave * waveNumber;
-        System.out.println("Starting Wave " + waveNumber);
-        waveSpawningActive = true;
-
-        if (waveTimer != null) {
-            waveTimer.cancel();
-        }
-        waveTimer = new Timer();
-        waveTimer.schedule(new TimerTask() {
-            @Override
-            public void run() {
-                try {
-                    if (gameState != GameState.PLAYING)
-                        return;
-
-                    if (enemiesToSpawnThisWave > 0 && enemies.size() < 20) { // Max 20 enemies at a time
-                        spawnEnemyNearPlayer();
-                        enemiesToSpawnThisWave--;
-                    } else if (enemiesToSpawnThisWave <= 0) {
-                        waveSpawningActive = false;
-                        this.cancel(); // Stop this timer task
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        }, 0, 1000); // Spawn one enemy per second
-    }
-
-    private void spawnEnemyNearPlayer() {
-        double playerX = player.getX();
-        double playerY = player.getY();
-
-        // Spawn enemies in a ring around the player
-        double spawnRadius = 200 + random.nextDouble() * 200; // 200 to 400 pixels away
-        double spawnAngle = random.nextDouble() * 2 * Math.PI;
-
-        double spawnX = playerX + spawnRadius * Math.cos(spawnAngle);
-        double spawnY = playerY + spawnRadius * Math.sin(spawnAngle);
-
-        int enemyType = random.nextInt(3);
-        switch (enemyType) {
-            case 0:
-                enemies.add(new SmallEnemy(spawnX, spawnY));
-                break;
-            case 1:
-                enemies.add(new NormalEnemy(spawnX, spawnY));
-                break;
-            case 2:
-                enemies.add(new BigEnemy(spawnX, spawnY));
-                break;
-        }
+        resetRunState();
+        gameState = GameState.MENU;
     }
 
     public void start() {
         gameLoop.start();
     }
 
-    public void startGame(Gun selectedGun) {
-        player.setGun(selectedGun);
-        gameState = GameState.PLAYING;
-        startNextWave();
-    }
-
     public void stop() {
         gameLoop.stop();
+        audioManager.close();
+        closeAllRoomWindows();
+    }
+
+    public void startGame(Gun selectedGun) {
+        resetRunState();
+        player.setGun(selectedGun);
+        sessionStats.updateLevel(player.getLevelingSystem().getLevel());
+        waveDirector.startRun();
+        gameState = GameState.PLAYING;
+        effectManager.emitWaveStart(player.getX(), player.getY(), random);
+        audioManager.playWaveStart();
+        requestMainFocus();
     }
 
     public void tick() {
-        switch (gameState) {
-            case MENU:
-                // No tick logic for menu yet
-                break;
-            case PLAYING:
-                tickPlaying();
-                break;
-            case PAUSED:
-                // No updates while paused
-                break;
-            case GAME_OVER:
-                // No updates on game over
-                break;
-            case LEVEL_UP:
-                // No updates while waiting for upgrade choice
-                break;
+        if (gameState == GameState.PLAYING) {
+            tickPlaying();
         }
     }
 
     public void tickPlaying() {
-        tickCounter++;
+        sessionStats.tick();
+        effectManager.tick();
+
+        if (hitCooldownTicksRemaining > 0) {
+            hitCooldownTicksRemaining--;
+        }
+        if (playerGraceTicksRemaining > 0) {
+            playerGraceTicksRemaining--;
+        }
+
+        if (player.tickGun()) {
+            audioManager.playReloadComplete(player.getGun());
+        }
 
         if (player.getLevelingSystem().hasLeveledUp()) {
-            gameState = GameState.LEVEL_UP;
-            upgradeScreen.presentUpgrades(this);
-            if (waveTimer != null) {
-                waveTimer.cancel();
-            }
+            enterLevelUp();
             return;
         }
 
-        if (!transitioning) {
-            player.move(upPressed, downPressed, leftPressed, rightPressed);
+        player.move(upPressed, downPressed, leftPressed, rightPressed);
+        if (updateRoomFromPlayerPosition()) {
+            playerGraceTicksRemaining = ROOM_TRANSITION_GRACE_TICKS;
         }
 
+        updatePlayerAim();
+
+        if (shooting) {
+            shoot();
+        }
+
+        updatePellets();
+        updateXps();
+        updateEnemies();
+        handlePlayerEnemyCollisions();
+        sessionStats.updateLevel(player.getLevelingSystem().getLevel());
+
+        if (player.getHealth() <= 0) {
+            gameState = GameState.GAME_OVER;
+            refreshRoomWindows();
+            updateMainWindowLocation();
+            return;
+        }
+
+        advanceWave();
+        refreshRoomWindows();
+        updateMainWindowLocation();
+
+        if (gameState == GameState.PLAYING && player.getLevelingSystem().hasLeveledUp()) {
+            enterLevelUp();
+        }
+    }
+
+    public void render() {
+        BufferStrategy bufferStrategy = getBufferStrategy();
+        if (bufferStrategy == null) {
+            createBufferStrategy(3);
+            return;
+        }
+
+        Graphics2D g2d = (Graphics2D) bufferStrategy.getDrawGraphics();
+        try {
+            switch (gameState) {
+                case MENU:
+                    menuScreen.render(g2d, getWidth(), getHeight());
+                    break;
+                case PLAYING:
+                    renderPlaying(g2d);
+                    break;
+                case PAUSED:
+                    renderPlaying(g2d);
+                    renderPaused(g2d);
+                    break;
+                case GAME_OVER:
+                    renderPlaying(g2d);
+                    gameOverScreen.render(g2d, getWidth(), getHeight(), sessionStats);
+                    break;
+                case LEVEL_UP:
+                    renderPlaying(g2d);
+                    upgradeScreen.render(g2d, getWidth(), getHeight());
+                    break;
+                default:
+                    break;
+            }
+        } finally {
+            g2d.dispose();
+            bufferStrategy.show();
+        }
+    }
+
+    public void renderPlaying(Graphics2D g2d) {
+        g2d.setColor(Color.BLACK);
+        g2d.fillRect(0, 0, getWidth(), getHeight());
+
+        prepareRoomBuckets();
+        g2d.translate(-cameraX, -cameraY);
+        renderer.render(g2d, player, roomBuckets, roomCol, roomRow);
+        g2d.translate(cameraX, cameraY);
+
+        renderer.drawWaveNumber(g2d, getWidth(), waveDirector.getWaveNumber(), getKillsToNextLevelEstimate());
+        drawInterWaveStatus(g2d);
+        effectManager.renderOverlay(g2d, getWidth(), getHeight());
+        renderRoomWindows();
+    }
+
+    private void enterLevelUp() {
+        gameState = GameState.LEVEL_UP;
+        audioManager.playLevelUp();
+        effectManager.emitLevelUp(player.getX(), player.getY(), random);
+        upgradeScreen.presentUpgrades(this);
+    }
+
+    private void updatePlayerAim() {
+        Enemy nearestEnemy = getNearestEnemy();
+        if (nearestEnemy != null) {
+            player.updateGunAngle(nearestEnemy.getX(), nearestEnemy.getY());
+        } else {
+            player.spinGun();
+        }
+        player.smoothGunTransition();
+    }
+
+    private void shoot() {
+        if (player.getGun() == null) {
+            return;
+        }
+
+        List<Pellet> newPellets = player.shoot();
+        if (newPellets.isEmpty()) {
+            return;
+        }
+
+        pellets.addAll(newPellets);
+        if (player.getGun() instanceof SMG) {
+            effectManager.emitMuzzleFlash(player.getGunX(), player.getGunY(), player.getGunAngle(),
+                    getShotEffectColor(player.getGun()), random, 2, 3, 1.8, 3);
+        } else if (player.getGun() instanceof Shotgun) {
+            effectManager.emitMuzzleFlash(player.getGunX(), player.getGunY(), player.getGunAngle(),
+                    getShotEffectColor(player.getGun()), random, 7, 9, 4.8, 6);
+        } else if (player.getGun() instanceof Sniper) {
+            effectManager.emitMuzzleFlash(player.getGunX(), player.getGunY(), player.getGunAngle(),
+                    getShotEffectColor(player.getGun()), random, 4, 5, 3.2, 4);
+        } else {
+            effectManager.emitMuzzleFlash(player.getGunX(), player.getGunY(), player.getGunAngle(),
+                    getShotEffectColor(player.getGun()), random, 4, 6, 3.0, 4);
+        }
+        audioManager.playShot(player.getGun());
+    }
+
+    private void updatePellets() {
+        Iterator<Pellet> pelletIterator = pellets.iterator();
+        while (pelletIterator.hasNext()) {
+            Pellet pellet = pelletIterator.next();
+            pellet.move();
+
+            boolean pelletRemoved = false;
+            for (int i = 0; i < enemies.size(); i++) {
+                Enemy enemy = enemies.get(i);
+                if (!checkCollision(pellet, enemy)) {
+                    continue;
+                }
+
+                enemy.setHealth(enemy.getHealth() - (int) pellet.getDamage());
+                applyKnockback(enemy, pellet);
+                effectManager.emitHitSparks(pellet.getX(), pellet.getY(), enemy.getColor(), random);
+                pelletIterator.remove();
+                pelletRemoved = true;
+
+                if (enemy.getHealth() <= 0) {
+                    enemies.remove(i);
+                    xps.add(new XP(enemy.getX(), enemy.getY(), enemy.getXpDropAmount()));
+                    effectManager.emitEnemyDeath(enemy.getX(), enemy.getY(), enemy.getColor(), random);
+                    audioManager.playEnemyDefeated();
+                    sessionStats.recordEnemyDefeated();
+                } else {
+                    audioManager.playEnemyHit();
+                }
+                break;
+            }
+
+            if (!pelletRemoved && isPelletOutOfRange(pellet)) {
+                pelletIterator.remove();
+            }
+        }
+    }
+
+    private void updateXps() {
+        Iterator<XP> xpIterator = xps.iterator();
+        double pickupRadiusSquared = player.getPickupRadius() * player.getPickupRadius();
+        double attractionRadiusSquared = player.getAttractionRadius() * player.getAttractionRadius();
+
+        while (xpIterator.hasNext()) {
+            XP xp = xpIterator.next();
+            double dx = player.getX() - xp.getX();
+            double dy = player.getY() - xp.getY();
+            double distanceSquared = (dx * dx) + (dy * dy);
+
+            if (distanceSquared <= pickupRadiusSquared) {
+                player.getLevelingSystem().addXp(xp.getAmount());
+                effectManager.emitXpPickup(xp.getX(), xp.getY(), random);
+                audioManager.playXpPickup();
+                xpIterator.remove();
+                continue;
+            }
+
+            if (distanceSquared <= attractionRadiusSquared) {
+                xp.moveTo(player.getX(), player.getY());
+            }
+            xp.move();
+        }
+    }
+
+    private void updateEnemies() {
         double playerX = player.getX();
         double playerY = player.getY();
+        for (Enemy enemy : enemies) {
+            enemy.move();
+            enemy.moveToPlayer(playerX, playerY);
+        }
+    }
 
+    private void handlePlayerEnemyCollisions() {
+        if (hitCooldownTicksRemaining > 0 || playerGraceTicksRemaining > 0) {
+            return;
+        }
+
+        for (Enemy enemy : enemies) {
+            if (!checkCollision(player, enemy)) {
+                continue;
+            }
+
+            player.takeDamage(enemy.getDamage());
+            hitCooldownTicksRemaining = HIT_COOLDOWN_TICKS;
+            applyKnockbackToPlayer(enemy);
+            effectManager.triggerDamageFlash();
+            effectManager.emitHitSparks(player.getX(), player.getY(), Color.RED, random);
+            audioManager.playPlayerHit();
+            break;
+        }
+    }
+
+    private void advanceWave() {
+        WaveDirector.WaveTickResult tickResult = waveDirector.tick(enemies.size());
+        if (tickResult.isWaveStarted()) {
+            effectManager.emitWaveStart(player.getX(), player.getY(), random);
+            audioManager.playWaveStart();
+        }
+        if (tickResult.isSpawnRequested()) {
+            enemies.add(waveDirector.createEnemyNearPlayer(player.getX(), player.getY(), random));
+        }
+    }
+
+    private void refreshRoomWindows() {
+        Set<String> activeRooms = new HashSet<>();
+        boolean createdWindow = false;
+        collectActiveRooms(activeRooms, enemies);
+        collectActiveRooms(activeRooms, pellets);
+        collectActiveRooms(activeRooms, xps);
+        collectActiveRooms(activeRooms, effectManager.getParticles());
+
+        for (String key : activeRooms) {
+            if (!roomWindows.containsKey(key)) {
+                int separator = key.indexOf(',');
+                int col = Integer.parseInt(key.substring(0, separator));
+                int row = Integer.parseInt(key.substring(separator + 1));
+                roomWindows.put(key, new RoomWindow(col, row, WINDOW_WIDTH, WINDOW_HEIGHT));
+                createdWindow = true;
+            }
+        }
+
+        Iterator<Map.Entry<String, RoomWindow>> iterator = roomWindows.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<String, RoomWindow> entry = iterator.next();
+            if (!activeRooms.contains(entry.getKey())) {
+                entry.getValue().close();
+                iterator.remove();
+                continue;
+            }
+
+            RoomWindow roomWindow = entry.getValue();
+            int roomWindowX = initialWindowLocation.x + (roomWindow.getRoomCol() * WINDOW_WIDTH);
+            int roomWindowY = initialWindowLocation.y + (roomWindow.getRoomRow() * WINDOW_HEIGHT);
+            roomWindow.setLocation(roomWindowX, roomWindowY);
+        }
+
+        if (createdWindow) {
+            requestMainFocus();
+        }
+    }
+
+    private void collectActiveRooms(Set<String> activeRooms, List<?> entities) {
+        for (Object entity : entities) {
+            double entityX;
+            double entityY;
+
+            if (entity instanceof Enemy) {
+                Enemy enemy = (Enemy) entity;
+                entityX = enemy.getX();
+                entityY = enemy.getY();
+            } else if (entity instanceof Pellet) {
+                Pellet pellet = (Pellet) entity;
+                entityX = pellet.getX();
+                entityY = pellet.getY();
+            } else if (entity instanceof XP) {
+                XP xp = (XP) entity;
+                entityX = xp.getX();
+                entityY = xp.getY();
+            } else if (entity instanceof Particle) {
+                Particle particle = (Particle) entity;
+                entityX = particle.getX();
+                entityY = particle.getY();
+            } else {
+                continue;
+            }
+
+            int entityCol = toRoomCol(entityX);
+            int entityRow = toRoomRow(entityY);
+            if (entityCol != roomCol || entityRow != roomRow) {
+                activeRooms.add(RoomRenderBucket.key(entityCol, entityRow));
+            }
+        }
+    }
+
+    private void updateMainWindowLocation() {
+        Point shakeOffset = effectManager.getShakeOffset(random);
+        int newWindowX = initialWindowLocation.x + (roomCol * WINDOW_WIDTH) + shakeOffset.x;
+        int newWindowY = initialWindowLocation.y + (roomRow * WINDOW_HEIGHT) + shakeOffset.y;
+        window.setLocation(newWindowX, newWindowY);
+    }
+
+    private void prepareRoomBuckets() {
+        roomBuckets.clear();
+
+        for (Enemy enemy : enemies) {
+            getOrCreateBucket(enemy.getX(), enemy.getY()).getEnemies().add(enemy);
+        }
+        for (Pellet pellet : pellets) {
+            getOrCreateBucket(pellet.getX(), pellet.getY()).getPellets().add(pellet);
+        }
+        for (XP xp : xps) {
+            getOrCreateBucket(xp.getX(), xp.getY()).getXps().add(xp);
+        }
+        for (Particle particle : effectManager.getParticles()) {
+            getOrCreateBucket(particle.getX(), particle.getY()).getParticles().add(particle);
+        }
+    }
+
+    private RoomRenderBucket getOrCreateBucket(double x, double y) {
+        int col = toRoomCol(x);
+        int row = toRoomRow(y);
+        String key = RoomRenderBucket.key(col, row);
+        RoomRenderBucket bucket = roomBuckets.get(key);
+        if (bucket == null) {
+            bucket = new RoomRenderBucket(col, row);
+            roomBuckets.put(key, bucket);
+        }
+        return bucket;
+    }
+
+    private void renderRoomWindows() {
+        for (RoomWindow roomWindow : roomWindows.values()) {
+            String key = RoomRenderBucket.key(roomWindow.getRoomCol(), roomWindow.getRoomRow());
+            roomWindow.render(roomBuckets.get(key));
+        }
+    }
+
+    private void drawInterWaveStatus(Graphics2D g2d) {
+        if (waveDirector.getInterWaveTicksRemaining() <= 0 || gameState == GameState.GAME_OVER) {
+            return;
+        }
+
+        int seconds = Math.max(1, (int) Math.ceil(waveDirector.getInterWaveTicksRemaining() / 60.0));
+        String text = "Next Wave In: " + seconds;
+        g2d.setColor(new Color(255, 255, 255, 180));
+        g2d.setFont(INTER_WAVE_FONT);
+        FontMetrics fm = g2d.getFontMetrics();
+        int x = (getWidth() - fm.stringWidth(text)) / 2;
+        g2d.drawString(text, x, 72);
+    }
+
+    private void renderPaused(Graphics2D g2d) {
+        g2d.setColor(new Color(0, 0, 0, 150));
+        g2d.fillRect(0, 0, getWidth(), getHeight());
+        g2d.setColor(Color.WHITE);
+        g2d.setFont(PAUSE_FONT);
+        String text = "PAUSED";
+        FontMetrics fm = g2d.getFontMetrics();
+        int x = (getWidth() - fm.stringWidth(text)) / 2;
+        int y = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
+        g2d.drawString(text, x, y);
+    }
+
+    private boolean updateRoomFromPlayerPosition() {
+        double playerX = player.getX();
+        double playerY = player.getY();
         double roomLeft = roomCol * roomWidth;
         double roomRight = (roomCol + 1) * roomWidth;
         double roomTop = roomRow * roomHeight;
@@ -253,21 +553,22 @@ public class Game extends Canvas {
 
         boolean changed = false;
         if (playerX < roomLeft) {
-            roomCol -= 1;
-            player.setX((roomCol + 1) * roomWidth - 1);
+            roomCol--;
+            player.setX(((roomCol + 1) * roomWidth) - 1);
             changed = true;
         } else if (playerX >= roomRight) {
-            roomCol += 1;
-            player.setX(roomCol * roomWidth + 1);
+            roomCol++;
+            player.setX((roomCol * roomWidth) + 1);
             changed = true;
         }
+
         if (playerY < roomTop) {
-            roomRow -= 1;
-            player.setY((roomRow + 1) * roomHeight - 1);
+            roomRow--;
+            player.setY(((roomRow + 1) * roomHeight) - 1);
             changed = true;
         } else if (playerY >= roomBottom) {
-            roomRow += 1;
-            player.setY(roomRow * roomHeight + 1);
+            roomRow++;
+            player.setY((roomRow * roomHeight) + 1);
             changed = true;
         }
 
@@ -276,406 +577,146 @@ public class Game extends Canvas {
             cameraY = roomRow * roomHeight;
         }
 
-        // Update the player's gun angle based on the nearest enemy
-        Enemy nearestEnemy = getNearestEnemy();
-        if (nearestEnemy != null) {
-            player.updateGunAngle(nearestEnemy.getX(), nearestEnemy.getY());
-        } else {
-            player.spinGun();
-        }
-        player.smoothGunTransition();
-
-        // Handle shooting
-        if (shooting) {
-            shoot();
-        }
-
-        tickParticles();
-        tickScreenShake();
-
-        // Update window position with shake
-        double shakeOffsetX = 0;
-        double shakeOffsetY = 0;
-        if (screenShakeDuration > 0) {
-            shakeOffsetX = (random.nextDouble() - 0.5) * screenShakeMagnitude;
-            shakeOffsetY = (random.nextDouble() - 0.5) * screenShakeMagnitude;
-        }
-        int newWindowX = initialWindowLocation.x + roomCol * WINDOW_WIDTH + (int) shakeOffsetX;
-        int newWindowY = initialWindowLocation.y + roomRow * WINDOW_HEIGHT + (int) shakeOffsetY;
-        window.setLocation(newWindowX, newWindowY);
-
-        // Check for collisions between player and enemies
-        Iterator<Enemy> enemyCollisionIterator = enemies.iterator();
-        while (enemyCollisionIterator.hasNext()) {
-            Enemy enemy = enemyCollisionIterator.next();
-            if (checkCollision(player, enemy)) {
-                long currentTime = System.currentTimeMillis();
-                if (currentTime - lastHitTime > hitCooldown) {
-                    player.takeDamage(enemy.getDamage());
-                    lastHitTime = currentTime;
-                    applyKnockbackToPlayer(enemy);
-                }
-            }
-        }
-
-        // Move pellets and handle collisions with enemies
-        Iterator<Pellet> pelletIterator = pellets.iterator();
-        List<Enemy> enemiesToRemove = new ArrayList<>();
-        while (pelletIterator.hasNext()) {
-            Pellet pellet = pelletIterator.next();
-            pellet.move();
-
-            boolean pelletRemoved = false;
-            for (Enemy enemy : enemies) {
-                if (checkCollision(pellet, enemy)) {
-                    enemy.setHealth(enemy.getHealth() - (int) pellet.getDamage());
-                    if (enemy.getHealth() <= 0) {
-                        xps.add(new XP(enemy.getX(), enemy.getY(), enemy.getXpDropAmount()));
-                        // Create particle explosion on death
-                        for (int i = 0; i < 30; i++) {
-                            double angle = random.nextDouble() * 2 * Math.PI;
-                            double speed = 1 + random.nextDouble() * 2;
-                            double dx = Math.cos(angle) * speed;
-                            double dy = Math.sin(angle) * speed;
-                            particles.add(new Particle(enemy.getX(), enemy.getY(), dx, dy, 30 + random.nextInt(30),
-                                    enemy.getColor()));
-                        }
-                        enemiesToRemove.add(enemy);
-                    }
-                    applyKnockback(enemy, pellet);
-                    pelletIterator.remove();
-                    pelletRemoved = true;
-                    break;
-                }
-            }
-            if (!pelletRemoved) {
-                // A liberal bounding box for pellets around the current player's room region.
-                // This prevents pellets from being immediately removed in negative-coordinate
-                // rooms.
-                double minX = (roomCol - 2) * roomWidth;
-                double maxX = (roomCol + 3) * roomWidth;
-                double minY = (roomRow - 2) * roomHeight;
-                double maxY = (roomRow + 3) * roomHeight;
-
-                if (pellet.getX() < minX || pellet.getX() > maxX || pellet.getY() < minY || pellet.getY() > maxY) {
-                    pelletIterator.remove();
-                }
-            }
-        }
-        enemies.removeAll(enemiesToRemove);
-
-        // Handle XP pickup
-        Iterator<XP> xpIterator = xps.iterator();
-        while (xpIterator.hasNext()) {
-            XP xp = xpIterator.next();
-            double distance = Math.hypot(player.getX() - xp.getX(), player.getY() - xp.getY());
-            if (distance < player.getPickupRadius()) {
-                player.getLevelingSystem().addXp(xp.getAmount());
-                xpIterator.remove();
-            } else if (distance < player.getAttractionRadius()) {
-                xp.moveTo(player.getX(), player.getY());
-            }
-            xp.move();
-        }
-
-        // Move enemies toward the player and update facing angle
-        for (Enemy enemy : enemies) {
-            enemy.move();
-            enemy.moveToPlayer(playerX, playerY);
-        }
-
-        // Create and manage windows for other rooms
-        List<String> activeRooms = new ArrayList<>();
-        for (Enemy e : enemies) {
-            int eCol = (int) Math.floor(e.getX() / roomWidth);
-            int eRow = (int) Math.floor(e.getY() / roomHeight);
-            if (eCol != roomCol || eRow != roomRow) {
-                String key = eCol + "," + eRow;
-                if (!roomWindows.containsKey(key)) {
-                    RoomWindow rw = new RoomWindow(eCol, eRow, WINDOW_WIDTH, WINDOW_HEIGHT);
-                    roomWindows.put(key, rw);
-                }
-                activeRooms.add(key);
-            }
-        }
-
-        // Update locations of room windows (in case room indices shift)
-        for (RoomWindow rw : roomWindows.values()) {
-            int roomWindowX = initialWindowLocation.x + (rw.getRoomCol() * WINDOW_WIDTH);
-            int roomWindowY = initialWindowLocation.y + (rw.getRoomRow() * WINDOW_HEIGHT);
-            rw.setLocation(roomWindowX, roomWindowY);
-        }
-
-        // Periodically clean up windows for rooms with no enemies
-        if (tickCounter % 60 == 0) { // every second
-            List<String> keysToRemove = new ArrayList<>();
-            for (String key : roomWindows.keySet()) {
-                if (!activeRooms.contains(key)) {
-                    keysToRemove.add(key);
-                }
-            }
-            for (String key : keysToRemove) {
-                RoomWindow rw = roomWindows.get(key);
-                if (rw != null) {
-                    rw.close(); // Dispose the JFrame
-                }
-                roomWindows.remove(key);
-            }
-        }
-
-        if (player.getHealth() <= 0) {
-            gameState = GameState.GAME_OVER;
-            if (waveTimer != null) {
-                waveTimer.cancel();
-            }
-        }
-
-        if (!waveSpawningActive && enemies.isEmpty() && enemiesToSpawnThisWave <= 0 && !isWaitingForNextWave) {
-            isWaitingForNextWave = true;
-            System.out.println("Wave " + waveNumber + " complete!");
-            if (waveTimer != null) {
-                waveTimer.cancel();
-                waveTimer = new Timer();
-                waveTimer.schedule(new TimerTask() {
-                    @Override
-                    public void run() {
-                        try {
-                            if (gameState == GameState.PLAYING) {
-                                startNextWave();
-                            }
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                    }
-                }, timeBetweenWaves);
-            }
-        }
-
-        this.requestFocus();
-    }
-
-    private void tickScreenShake() {
-        if (screenShakeDuration > 0) {
-            screenShakeDuration--;
-            screenShakeMagnitude *= 0.9; // Decay the magnitude
-        } else {
-            screenShakeMagnitude = 0;
-        }
-    }
-
-    private void tickParticles() {
-        Iterator<Particle> iterator = particles.iterator();
-        while (iterator.hasNext()) {
-            Particle p = iterator.next();
-            p.tick();
-            if (!p.isAlive()) {
-                iterator.remove();
-            }
-        }
-    }
-
-    private void shoot() {
-        if (player.getGun() != null) {
-            List<Pellet> newPellets = player.shoot();
-            if (newPellets != null && !newPellets.isEmpty()) {
-                this.pellets.addAll(newPellets);
-                // Add particle effects
-                double gunX = player.getGunX();
-                double gunY = player.getGunY();
-                double angle = player.getGunAngle();
-                double spread = player.getGun().getSpread();
-                for (int i = 0; i < 20; i++) {
-                    double particleAngle = angle + (random.nextDouble() - 0.5) * spread;
-                    double particleSpeed = 2 + random.nextDouble() * 2;
-                    double dx = Math.cos(particleAngle) * particleSpeed;
-                    double dy = Math.sin(particleAngle) * particleSpeed;
-                    particles.add(new Particle(gunX, gunY, dx, dy, 20 + random.nextInt(20), Color.ORANGE));
-                }
-                // Trigger screen shake
-                screenShakeMagnitude = 5;
-                screenShakeDuration = 10;
-            }
-        }
+        return changed;
     }
 
     private Enemy getNearestEnemy() {
         Enemy nearestEnemy = null;
-        double nearestDistance = Double.MAX_VALUE;
+        double nearestDistanceSquared = Double.MAX_VALUE;
+
         for (Enemy enemy : enemies) {
-            double distance = Math.hypot(player.getX() - enemy.getX(), player.getY() - enemy.getY());
-            if (distance < nearestDistance) {
-                nearestDistance = distance;
+            double dx = player.getX() - enemy.getX();
+            double dy = player.getY() - enemy.getY();
+            double distanceSquared = (dx * dx) + (dy * dy);
+            if (distanceSquared < nearestDistanceSquared) {
+                nearestDistanceSquared = distanceSquared;
                 nearestEnemy = enemy;
             }
         }
+
         return nearestEnemy;
     }
 
     private boolean checkCollision(Pellet pellet, Enemy enemy) {
-        double distance = Math.hypot(pellet.getX() - enemy.getX(), pellet.getY() - enemy.getY());
-        return distance < 15;
+        double dx = pellet.getX() - enemy.getX();
+        double dy = pellet.getY() - enemy.getY();
+        double radius = (enemy.getSize() / 2.0) + (pellet.getSize() / 2.0);
+        return (dx * dx) + (dy * dy) <= radius * radius;
     }
 
-    private boolean checkCollision(Player player, Enemy enemy) {
-        double distance = Math.hypot(player.getX() - enemy.getX(), player.getY() - enemy.getY());
-        return distance < 20;
+    private boolean checkCollision(Player currentPlayer, Enemy enemy) {
+        double dx = currentPlayer.getX() - enemy.getX();
+        double dy = currentPlayer.getY() - enemy.getY();
+        double radius = PLAYER_COLLISION_RADIUS + (enemy.getSize() / 2.0);
+        return (dx * dx) + (dy * dy) <= radius * radius;
+    }
+
+    private boolean isPelletOutOfRange(Pellet pellet) {
+        double minX = (roomCol - 2) * roomWidth;
+        double maxX = (roomCol + 3) * roomWidth;
+        double minY = (roomRow - 2) * roomHeight;
+        double maxY = (roomRow + 3) * roomHeight;
+        return pellet.getX() < minX || pellet.getX() > maxX || pellet.getY() < minY || pellet.getY() > maxY;
     }
 
     private void applyKnockback(Enemy enemy, Pellet pellet) {
-        double angle = Math.atan2(enemy.getY() - pellet.getY(), enemy.getX() - pellet.getX());
-        double knockbackX = pellet.getKnockback() * Math.cos(angle);
-        double knockbackY = pellet.getKnockback() * Math.sin(angle);
-        enemy.applyKnockback(knockbackX, knockbackY);
+        double dx = enemy.getX() - pellet.getX();
+        double dy = enemy.getY() - pellet.getY();
+        double distanceSquared = (dx * dx) + (dy * dy);
+        if (distanceSquared <= 0.0001) {
+            return;
+        }
+
+        double distance = Math.sqrt(distanceSquared);
+        enemy.applyKnockback((dx / distance) * pellet.getKnockback(), (dy / distance) * pellet.getKnockback());
     }
 
     private void applyKnockbackToPlayer(Enemy enemy) {
-        double knockbackStrength = 30.0; // Adjust strength as needed
+        double knockbackStrength = 30.0;
         double dx = player.getX() - enemy.getX();
         double dy = player.getY() - enemy.getY();
-        double distance = Math.sqrt(dx * dx + dy * dy);
-
-        if (distance != 0) {
-            double knockbackX = (dx / distance) * knockbackStrength;
-            double knockbackY = (dy / distance) * knockbackStrength;
-            player.applyKnockback(knockbackX, knockbackY);
-        }
-    }
-
-    public void render() {
-        BufferStrategy bs = getBufferStrategy();
-        if (bs == null) {
-            createBufferStrategy(3);
+        double distanceSquared = (dx * dx) + (dy * dy);
+        if (distanceSquared <= 0.0001) {
             return;
         }
-        Graphics g = bs.getDrawGraphics();
 
-        switch (gameState) {
-            case MENU:
-                menuScreen.render(g, getWidth(), getHeight());
-                break;
-            case PLAYING:
-                renderPlaying(g);
-                break;
-            case PAUSED:
-                renderPlaying(g); // Render the game state but don't update it
-                renderPaused(g);
-                break;
-            case GAME_OVER:
-                renderPlaying(g); // Render the game state but don't update it
-                gameOverScreen.render(g, getWidth(), getHeight());
-                break;
-            case LEVEL_UP:
-                renderPlaying(g);
-                upgradeScreen.render(g);
-                break;
+        double distance = Math.sqrt(distanceSquared);
+        player.applyKnockback((dx / distance) * knockbackStrength, (dy / distance) * knockbackStrength);
+    }
+
+    private Color getShotEffectColor(Gun gun) {
+        if (gun instanceof Shotgun) {
+            return new Color(255, 150, 70);
+        }
+        if (gun instanceof Sniper) {
+            return new Color(160, 240, 255);
+        }
+        if (gun instanceof SMG) {
+            return new Color(255, 220, 96);
+        }
+        return Color.ORANGE;
+    }
+
+    private int getKillsToNextLevelEstimate() {
+        int remainingXp = player.getLevelingSystem().getXpRemainingToNextLevel();
+        if (remainingXp <= 0) {
+            return 0;
         }
 
-        g.dispose();
-        bs.show();
-
-        // Request focus to keep input on the main window.
-        this.requestFocus();
+        int xpPerKillEstimate = getXpPerKillEstimate();
+        return Math.max(1, (int) Math.ceil(remainingXp / (double) xpPerKillEstimate));
     }
 
-    public void renderPlaying(Graphics g) {
-        // Clear and render main (player) window.
-        g.setColor(Color.BLACK);
-        g.fillRect(0, 0, getWidth(), getHeight());
-        Graphics2D g2d = (Graphics2D) g;
-        g2d.translate(-cameraX, -cameraY);
-        renderer.render(player, enemies, pellets, xps, particles);
-        g2d.translate(cameraX, cameraY);
-
-        // Render each additional room window.
-        roomWindows.values().forEach(rw -> {
-            List<Enemy> roomEnemies = enemies.stream().filter(e -> {
-                int col = (int) Math.floor(e.getX() / roomWidth);
-                int row = (int) Math.floor(e.getY() / roomHeight);
-                return col == rw.getRoomCol() && row == rw.getRoomRow();
-            }).collect(Collectors.toList());
-            List<Pellet> roomPellets = pellets.stream().filter(p -> {
-                int col = (int) Math.floor(p.getX() / roomWidth);
-                int row = (int) Math.floor(p.getY() / roomHeight);
-                return col == rw.getRoomCol() && row == rw.getRoomRow();
-            }).collect(Collectors.toList());
-            List<XP> roomXPs = xps.stream().filter(x -> {
-                int col = (int) Math.floor(x.getX() / roomWidth);
-                int row = (int) Math.floor(x.getY() / roomHeight);
-                return col == rw.getRoomCol() && row == rw.getRoomRow();
-            }).collect(Collectors.toList());
-            List<Particle> roomParticles = particles.stream().filter(p -> {
-                int col = (int) Math.floor(p.getX() / roomWidth);
-                int row = (int) Math.floor(p.getY() / roomHeight);
-                return col == rw.getRoomCol() && row == rw.getRoomRow();
-            }).collect(Collectors.toList());
-            rw.render(roomEnemies, roomPellets, roomXPs, roomParticles);
-        });
-
-        // Request focus to keep input on the main window.
-        this.requestFocus();
-    }
-
-    private void renderPaused(Graphics g) {
-        g.setColor(new Color(0, 0, 0, 150));
-        g.fillRect(0, 0, getWidth(), getHeight());
-        g.setColor(Color.WHITE);
-        g.setFont(new Font("Arial", Font.BOLD, 50));
-        String text = "PAUSED";
-        FontMetrics fm = g.getFontMetrics();
-        int x = (getWidth() - fm.stringWidth(text)) / 2;
-        int y = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
-        g.drawString(text, x, y);
-    }
-
-    private void drawHealth(Graphics g) {
-        if (player == null)
-            return;
-        int health = player.getHealth();
-        int maxHealth = player.getMaxHealth();
-        int circleSize = 10;
-        int spacing = 5;
-        int totalWidth = (circleSize + spacing) * maxHealth - spacing;
-        // Position above the player
-        double playerScreenX = player.getX() - cameraX;
-        double playerScreenY = player.getY() - cameraY;
-
-        int startX = (int) (playerScreenX - totalWidth / 2);
-        int startY = (int) (playerScreenY - 30 - circleSize); // 30 pixels above player
-
-        for (int i = 0; i < maxHealth; i++) {
-            g.setColor(Color.RED);
-            if (i < health) {
-                g.fillOval(startX + i * (circleSize + spacing), startY, circleSize, circleSize);
-            } else {
-                g.drawOval(startX + i * (circleSize + spacing), startY, circleSize, circleSize);
+    private int getXpPerKillEstimate() {
+        if (!enemies.isEmpty()) {
+            int totalXp = 0;
+            for (Enemy enemy : enemies) {
+                totalXp += enemy.getXpDropAmount();
             }
+            return Math.max(1, Math.round(totalXp / (float) enemies.size()));
         }
+
+        return waveDirector.getEstimatedXpPerKill();
     }
 
-    private void drawAmmo(Graphics g) {
-        if (player == null || player.getGun() == null)
-            return;
-        Gun gun = player.getGun();
-        int currentAmmo = gun.getCurrentAmmo();
-        int magazineSize = gun.getMagazineSize();
-        if (magazineSize <= 0)
-            return;
+    private int toRoomCol(double x) {
+        return (int) Math.floor(x / roomWidth);
+    }
 
-        double angleStep = 2 * Math.PI / magazineSize;
-        int ammoCircleRadius = 4;
-        int orbitRadius = 25; // The radius of the circle on which the ammo dots are placed
+    private int toRoomRow(double y) {
+        return (int) Math.floor(y / roomHeight);
+    }
 
-        double playerScreenX = player.getX() - cameraX;
-        double playerScreenY = player.getY() - cameraY;
+    private void resetRunState() {
+        pellets.clear();
+        enemies.clear();
+        xps.clear();
+        effectManager.reset();
+        waveDirector.reset();
+        sessionStats.reset();
+        upgradeScreen.clear();
+        closeAllRoomWindows();
+        roomBuckets.clear();
+        roomCol = 0;
+        roomRow = 0;
+        cameraX = 0;
+        cameraY = 0;
+        player = new Player(100, 100);
+        hitCooldownTicksRemaining = 0;
+        playerGraceTicksRemaining = GAME_START_GRACE_TICKS;
+        upPressed = false;
+        downPressed = false;
+        leftPressed = false;
+        rightPressed = false;
+        shooting = false;
+        window.setLocation(initialWindowLocation.x, initialWindowLocation.y);
+    }
 
-        for (int i = 0; i < currentAmmo; i++) {
-            double angle = i * angleStep - Math.PI / 2; // Start from the top
-            int x = (int) (playerScreenX + orbitRadius * Math.cos(angle)) - ammoCircleRadius;
-            int y = (int) (playerScreenY + orbitRadius * Math.sin(angle)) - ammoCircleRadius;
-
-            g.setColor(new Color(255, 255, 255, 150)); // Slightly opaque white
-            g.fillOval(x, y, ammoCircleRadius * 2, ammoCircleRadius * 2);
+    private void closeAllRoomWindows() {
+        for (RoomWindow roomWindow : roomWindows.values()) {
+            roomWindow.close();
         }
+        roomWindows.clear();
     }
 
     public int getRoomCol() {
@@ -714,10 +755,6 @@ public class Game extends Canvas {
         this.shooting = shooting;
     }
 
-    public BufferStrategy getBufferStrategy() {
-        return super.getBufferStrategy();
-    }
-
     public GameState getGameState() {
         return gameState;
     }
@@ -747,6 +784,7 @@ public class Game extends Canvas {
             gameState = GameState.PAUSED;
         } else if (gameState == GameState.PAUSED) {
             gameState = GameState.PLAYING;
+            requestMainFocus();
         } else if (gameState == GameState.GAME_OVER) {
             reset();
         }
@@ -754,53 +792,30 @@ public class Game extends Canvas {
 
     public void resumeWave() {
         player.getLevelingSystem().resetLevelUpFlag();
-        if (waveTimer != null) {
-            waveTimer.cancel();
-        }
-        waveTimer = new Timer();
-        waveTimer.schedule(new TimerTask() {
-            @Override
-            public void run() {
-                try {
-                    if (gameState != GameState.PLAYING)
-                        return;
-
-                    if (enemiesToSpawnThisWave > 0 && enemies.size() < 20) {
-                        spawnEnemyNearPlayer();
-                        enemiesToSpawnThisWave--;
-                    } else if (enemiesToSpawnThisWave <= 0) {
-                        waveSpawningActive = false;
-                        this.cancel();
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        }, 0, 1000);
+        gameState = GameState.PLAYING;
+        requestMainFocus();
     }
 
     public void reset() {
-        // Reset player
-        player = new Player(cameraX + 100, cameraY + 100);
-        // Clear all entities
-        pellets.clear();
-        enemies.clear();
-        xps.clear();
-        particles.clear();
-        // Reset game state
+        resetRunState();
         gameState = GameState.MENU;
-        waveNumber = 0;
-        if (waveTimer != null) {
-            waveTimer.cancel();
-        }
+        requestMainFocus();
     }
 
     public int getWaveNumber() {
-        return waveNumber;
+        return waveDirector.getWaveNumber();
     }
 
     public UpgradeManager getUpgradeManager() {
         return upgradeManager;
+    }
+
+    public void playUiClick() {
+        audioManager.playUiClick();
+    }
+
+    public void requestMainFocus() {
+        window.requestCanvasFocus(this);
     }
 
     public static void main(String[] args) {

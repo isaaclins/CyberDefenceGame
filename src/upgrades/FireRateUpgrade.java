@@ -10,13 +10,14 @@ public class FireRateUpgrade implements Upgrade {
 
     @Override
     public String getDescription() {
-        return "Increases fire rate by 10%";
+        return "Reduces time between shots by 10%";
     }
 
     @Override
     public void apply(Player player) {
         if (player.getGun() != null) {
-            player.getGun().setReloadSpeed(player.getGun().getReloadSpeed() * 0.9);
+            int currentCooldown = player.getGun().getShotCooldownTicks();
+            player.getGun().setShotCooldownTicks(Math.max(1, (int) Math.round(currentCooldown * 0.9)));
         }
     }
 }

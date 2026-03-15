@@ -2,21 +2,21 @@ package src.upgrades;
 
 import src.entity.Player;
 
-public class DamageUpgrade implements Upgrade {
+public class ReloadSpeedUpgrade implements Upgrade {
     @Override
     public String getName() {
-        return "Damage Up";
+        return "Reload Speed Up";
     }
 
     @Override
     public String getDescription() {
-        return "Increases gun damage by 15%";
+        return "Reduces reload time by 15%";
     }
 
     @Override
     public void apply(Player player) {
         if (player.getGun() != null) {
-            player.getGun().setDamage(player.getGun().getDamage() * 1.15);
+            player.getGun().setReloadSpeed(player.getGun().getReloadSpeed() * 0.85);
         }
     }
 }

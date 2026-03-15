@@ -2,21 +2,21 @@ package src.upgrades;
 
 import src.entity.Player;
 
-public class DamageUpgrade implements Upgrade {
+public class MagazineSizeUpgrade implements Upgrade {
     @Override
     public String getName() {
-        return "Damage Up";
+        return "Magazine Up";
     }
 
     @Override
     public String getDescription() {
-        return "Increases gun damage by 15%";
+        return "Adds 2 bullets to the magazine";
     }
 
     @Override
     public void apply(Player player) {
         if (player.getGun() != null) {
-            player.getGun().setDamage(player.getGun().getDamage() * 1.15);
+            player.getGun().increaseMagazineSize(2);
         }
     }
 }

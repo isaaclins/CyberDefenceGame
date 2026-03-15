@@ -12,6 +12,9 @@ import src.main.Game;
 import src.utils.ClassFinder;
 
 public class MenuScreen {
+    private static final Font TITLE_FONT = new Font("Arial", Font.BOLD, 50);
+    private static final Font SUBTITLE_FONT = new Font("Arial", Font.BOLD, 30);
+
     private List<Rectangle> gunButtons;
     private List<Class<?>> gunClasses;
 
@@ -25,12 +28,12 @@ public class MenuScreen {
         g.fillRect(0, 0, width, height);
 
         g.setColor(Color.WHITE);
-        g.setFont(new Font("Arial", Font.BOLD, 50));
+        g.setFont(TITLE_FONT);
         String title = "Cyber Defence Game";
         int strWidth = g.getFontMetrics().stringWidth(title);
         g.drawString(title, (width - strWidth) / 2, height / 2 - 150);
 
-        g.setFont(new Font("Arial", Font.BOLD, 30));
+        g.setFont(SUBTITLE_FONT);
         String selectText = "Select a Gun";
         strWidth = g.getFontMetrics().stringWidth(selectText);
         g.drawString(selectText, (width - strWidth) / 2, height / 2 - 50);
@@ -57,6 +60,7 @@ public class MenuScreen {
             if (gunButtons.get(i).contains(x, y)) {
                 try {
                     Gun selectedGun = (Gun) gunClasses.get(i).getDeclaredConstructor().newInstance();
+                    game.playUiClick();
                     game.startGame(selectedGun);
                 } catch (Exception e) {
                     e.printStackTrace();

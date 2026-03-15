@@ -38,6 +38,10 @@ public class LevelingSystem {
         return xpToNextLevel;
     }
 
+    public int getXpRemainingToNextLevel() {
+        return Math.max(0, xpToNextLevel - xp);
+    }
+
     public boolean hasLeveledUp() {
         return justLeveledUp;
     }

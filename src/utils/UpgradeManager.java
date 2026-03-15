@@ -3,6 +3,10 @@ package src.utils;
 import src.upgrades.Upgrade;
 import src.upgrades.DamageUpgrade;
 import src.upgrades.FireRateUpgrade;
+import src.upgrades.MagazineSizeUpgrade;
+import src.upgrades.MaxHealthUpgrade;
+import src.upgrades.MoveSpeedUpgrade;
+import src.upgrades.ReloadSpeedUpgrade;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -15,7 +19,10 @@ public class UpgradeManager {
         allUpgrades = new ArrayList<>();
         allUpgrades.add(new DamageUpgrade());
         allUpgrades.add(new FireRateUpgrade());
-        // Add other upgrades here
+        allUpgrades.add(new ReloadSpeedUpgrade());
+        allUpgrades.add(new MagazineSizeUpgrade());
+        allUpgrades.add(new MaxHealthUpgrade());
+        allUpgrades.add(new MoveSpeedUpgrade());
     }
 
     public List<Upgrade> getRandomUpgrades(int count) {
