@@ -10,11 +10,11 @@ public class MoveSpeedUpgrade implements Upgrade {
 
     @Override
     public String getDescription() {
-        return "Increases movement speed slightly";
+        return "Increases movement speed by 15%";
     }
 
     @Override
     public void apply(Player player) {
-        player.increaseAcceleration(0.08);
+        player.multiplyAcceleration(1.15);
     }
 }

@@ -59,9 +59,9 @@ public class Player {
         return gun.shoot(gunX, gunY, gunAngle);
     }
 
-    public boolean tickGun() {
+    public Gun.TickResult tickGun() {
         if (gun == null) {
-            return false;
+            return Gun.TickResult.of(false, false);
         }
         return gun.tick();
     }
@@ -157,6 +157,14 @@ public class Player {
         this.gun = gun;
     }
 
+    public boolean reloadGun() {
+        return gun != null && gun.reload();
+    }
+
+    public boolean consumeReloadStarted() {
+        return gun != null && gun.consumeReloadStarted();
+    }
+
     public void increaseMaxHealth(int amount) {
         if (amount <= 0) {
             return;
@@ -165,7 +173,10 @@ public class Player {
         health = Math.min(maxHealth, health + amount);
     }
 
-    public void increaseAcceleration(double amount) {
-        acceleration = Math.max(0.1, acceleration + amount);
+    public void multiplyAcceleration(double factor) {
+        if (factor <= 0) {
+            return;
+        }
+        acceleration = Math.max(0.1, acceleration * factor);
     }
 }

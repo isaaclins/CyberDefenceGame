@@ -22,6 +22,7 @@ public class Renderer {
     private static final Color XP_BAR_BACKGROUND = new Color(70, 70, 70, 220);
     private static final Color XP_BAR_COLOR = new Color(64, 220, 120);
     private static final Color AMMO_COLOR = new Color(255, 255, 255, 150);
+    private static final Color AMMO_RELOAD_OUTLINE_COLOR = new Color(255, 255, 255, 55);
 
     private final int roomWidth;
     private final int roomHeight;
@@ -127,13 +128,21 @@ public class Renderer {
         double playerScreenX = player.getX();
         double playerScreenY = player.getY();
 
-        for (int i = 0; i < currentAmmo; i++) {
+        for (int i = 0; i < magazineSize; i++) {
             double angle = i * angleStep - Math.PI / 2; // Start from the top
             int x = (int) (playerScreenX + orbitRadius * Math.cos(angle)) - ammoCircleRadius;
             int y = (int) (playerScreenY + orbitRadius * Math.sin(angle)) - ammoCircleRadius;
 
-            g2d.setColor(AMMO_COLOR);
-            g2d.fillOval(x, y, ammoCircleRadius * 2, ammoCircleRadius * 2);
+            if (i < currentAmmo) {
+                g2d.setColor(AMMO_COLOR);
+                g2d.fillOval(x, y, ammoCircleRadius * 2, ammoCircleRadius * 2);
+                continue;
+            }
+
+            if (gun.isReloading()) {
+                g2d.setColor(AMMO_RELOAD_OUTLINE_COLOR);
+                g2d.drawOval(x, y, ammoCircleRadius * 2, ammoCircleRadius * 2);
+            }
         }
     }
 

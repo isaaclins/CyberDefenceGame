@@ -19,6 +19,45 @@ public abstract class Gun {
     protected int currentAmmo;
     protected int reloadTicksRemaining;
     protected int shotCooldownTicksRemaining;
+    protected int reloadStartAmmo;
+    protected int reloadTicksTotal;
+    protected boolean reloadStartedSinceLastCheck;
+
+    public static final class TickResult {
+        private static final TickResult NONE = new TickResult(false, false);
+        private static final TickResult AMMO_INSERTED = new TickResult(true, false);
+        private static final TickResult RELOAD_COMPLETED = new TickResult(false, true);
+        private static final TickResult AMMO_INSERTED_AND_COMPLETED = new TickResult(true, true);
+
+        private final boolean ammoInserted;
+        private final boolean reloadCompleted;
+
+        private TickResult(boolean ammoInserted, boolean reloadCompleted) {
+            this.ammoInserted = ammoInserted;
+            this.reloadCompleted = reloadCompleted;
+        }
+
+        public static TickResult of(boolean ammoInserted, boolean reloadCompleted) {
+            if (ammoInserted && reloadCompleted) {
+                return AMMO_INSERTED_AND_COMPLETED;
+            }
+            if (ammoInserted) {
+                return AMMO_INSERTED;
+            }
+            if (reloadCompleted) {
+                return RELOAD_COMPLETED;
+            }
+            return NONE;
+        }
+
+        public boolean isAmmoInserted() {
+            return ammoInserted;
+        }
+
+        public boolean isReloadCompleted() {
+            return reloadCompleted;
+        }
+    }
 
     public Gun(double bulletSize, double bulletDamage, double bulletSpeed, int reloadDurationTicks, int shotCooldownTicks,
             int magazineSize, double spread, double knockback, int bulletsPerShot) {
@@ -35,23 +74,32 @@ public abstract class Gun {
         this.reloading = false;
         this.reloadTicksRemaining = 0;
         this.shotCooldownTicksRemaining = 0;
+        this.reloadStartAmmo = currentAmmo;
+        this.reloadTicksTotal = 0;
+        this.reloadStartedSinceLastCheck = false;
     }
 
     public abstract ArrayList<Pellet> shoot(double x, double y, double angle);
 
-    public boolean tick() {
+    public TickResult tick() {
+        boolean ammoInserted = false;
+        boolean reloadCompleted = false;
+
         if (shotCooldownTicksRemaining > 0) {
             shotCooldownTicksRemaining--;
         }
         if (reloadTicksRemaining > 0) {
+            int ammoBeforeTick = currentAmmo;
             reloadTicksRemaining--;
+            currentAmmo = Math.max(currentAmmo, getReloadDisplayAmmo());
+            ammoInserted = currentAmmo > ammoBeforeTick;
             if (reloadTicksRemaining == 0) {
                 currentAmmo = magazineSize;
                 reloading = false;
-                return true;
+                reloadCompleted = true;
             }
         }
-        return false;
+        return TickResult.of(ammoInserted, reloadCompleted);
     }
 
     protected boolean beginShot() {
@@ -74,12 +122,27 @@ public abstract class Gun {
         return true;
     }
 
-    protected void beginReload() {
-        if (reloading) {
-            return;
+    protected boolean beginReload() {
+        if (reloading || currentAmmo >= magazineSize) {
+            return false;
         }
+
         reloading = true;
-        reloadTicksRemaining = reloadDurationTicks;
+        reloadStartAmmo = currentAmmo;
+        reloadTicksTotal = Math.max(1, reloadDurationTicks);
+        reloadTicksRemaining = reloadTicksTotal;
+        reloadStartedSinceLastCheck = true;
+        return true;
+    }
+
+    public boolean reload() {
+        return beginReload();
+    }
+
+    public boolean consumeReloadStarted() {
+        boolean reloadStarted = reloadStartedSinceLastCheck;
+        reloadStartedSinceLastCheck = false;
+        return reloadStarted;
     }
 
     public int getCurrentAmmo() {
@@ -128,5 +191,20 @@ public abstract class Gun {
         }
         magazineSize += amount;
         currentAmmo = Math.min(magazineSize, currentAmmo + amount);
+    }
+
+    private int getReloadDisplayAmmo() {
+        if (!reloading || reloadTicksTotal <= 0) {
+            return currentAmmo;
+        }
+
+        int missingAmmo = magazineSize - reloadStartAmmo;
+        if (missingAmmo <= 0) {
+            return currentAmmo;
+        }
+
+        double progress = 1.0 - (reloadTicksRemaining / (double) reloadTicksTotal);
+        int loadedAmmo = (int) Math.floor(progress * missingAmmo);
+        return Math.min(magazineSize, reloadStartAmmo + loadedAmmo);
     }
 }

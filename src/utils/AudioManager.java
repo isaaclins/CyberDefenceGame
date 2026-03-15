@@ -52,6 +52,18 @@ public class AudioManager {
         play("smgReload", 40);
     }
 
+    public void playReloadProgress(Gun gun) {
+        if (gun instanceof Shotgun) {
+            play("shotgunReloadInsert", 35);
+            return;
+        }
+        if (gun instanceof Sniper) {
+            play("sniperReloadInsert", 35);
+            return;
+        }
+        play("smgReloadInsert", 35);
+    }
+
     public void playPlayerHit() {
         play("playerHit", 100);
     }
@@ -96,6 +108,9 @@ public class AudioManager {
             register("smgReload", buildSignal(95, 460, 760, 0.24, 0.02, 0.02), 2);
             register("shotgunReload", buildSignal(130, 220, 310, 0.26, 0.08, 0.05), 2);
             register("sniperReload", buildSignal(160, 330, 520, 0.24, 0.03, 0.03), 2);
+            register("smgReloadInsert", buildSignal(45, 760, 980, 0.12, 0.01, 0.04), 3);
+            register("shotgunReloadInsert", buildSignal(60, 210, 270, 0.15, 0.02, 0.06), 2);
+            register("sniperReloadInsert", buildSignal(70, 340, 440, 0.13, 0.01, 0.03), 2);
 
             register("playerHit", buildSignal(110, 170, 90, 0.46, 0.38, 0.15), 2);
             register("enemyHit", buildSignal(70, 680, 260, 0.20, 0.24, 0.05), 4);

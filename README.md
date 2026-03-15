@@ -33,26 +33,46 @@ This project is currently under development. Here is a list of current and plann
 
 ### Running the Game
 
-To run the game, execute the `runGame.sh` script (for Linux/macOS) or `runGame.bat` (for Windows).
-
-**For Linux/macOS:**
+Use `make run` to compile and launch the game:
 
 ```bash
-./runGame.sh
+make run
 ```
 
-**For Windows:**
+### Building App Packages
+
+Use `make build` to produce a runnable JAR, an app image, and the native installer for the current host OS:
 
 ```bash
-runGame.bat
+make build
 ```
 
-This will compile the source code and start the game.
+Generated artifacts are written to `dist/`:
+
+- macOS: `.app` app image and `.dmg`
+- Windows: app image and `.exe`
+- Linux: app image and `.deb` or `.rpm` when the required packaging tool is installed
+
+Native installers must be built on their target OS. For example, `.dmg` packaging must run on macOS and `.exe` packaging must run on Windows.
+
+The Makefile respects `JAVA_HOME`, so shell helpers such as `setjava` can point the build at a specific JDK before running `make`.
+
+You can also build specific package types directly:
+
+```bash
+make jar
+make app-image
+make package PACKAGE_TYPE=dmg
+make build-mac
+make build-windows
+make build-linux
+```
 
 ## Controls
 
 - **Movement:** `W`, `A`, `S`, `D`
 - **Shoot:** `Spacebar`
+- **Reload:** `R`
 - **Pause:** `Escape` or `P`
 - **Menus:** Use the `Mouse` to navigate and click on buttons in the menu, game over, and upgrade screens.
 

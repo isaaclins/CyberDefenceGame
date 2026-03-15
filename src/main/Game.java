@@ -162,9 +162,9 @@ public class Game extends Canvas {
             playerGraceTicksRemaining--;
         }
 
-        if (player.tickGun()) {
-            audioManager.playReloadComplete(player.getGun());
-        }
+        Gun.TickResult gunTickResult = player.tickGun();
+        playPendingReloadStartAudio();
+        handleReloadAudio(gunTickResult);
 
         if (player.getLevelingSystem().hasLeveledUp()) {
             enterLevelUp();
@@ -181,6 +181,7 @@ public class Game extends Canvas {
         if (shooting) {
             shoot();
         }
+        playPendingReloadStartAudio();
 
         updatePellets();
         updateXps();
@@ -300,6 +301,28 @@ public class Game extends Canvas {
         audioManager.playShot(player.getGun());
     }
 
+    private void handleReloadAudio(Gun.TickResult gunTickResult) {
+        if (player.getGun() == null) {
+            return;
+        }
+        if (gunTickResult.isReloadCompleted()) {
+            audioManager.playReloadComplete(player.getGun());
+            return;
+        }
+        if (gunTickResult.isAmmoInserted()) {
+            audioManager.playReloadProgress(player.getGun());
+        }
+    }
+
+    private void playPendingReloadStartAudio() {
+        if (player.getGun() == null) {
+            return;
+        }
+        if (player.consumeReloadStarted()) {
+            audioManager.playReloadProgress(player.getGun());
+        }
+    }
+
     private void updatePellets() {
         Iterator<Pellet> pelletIterator = pellets.iterator();
         while (pelletIterator.hasNext()) {
@@ -393,13 +416,13 @@ public class Game extends Canvas {
     }
 
     private void advanceWave() {
-        WaveDirector.WaveTickResult tickResult = waveDirector.tick(enemies.size());
+        WaveDirector.WaveTickResult tickResult = waveDirector.tick(enemies.size(), player.getX(), player.getY(), random);
         if (tickResult.isWaveStarted()) {
             effectManager.emitWaveStart(player.getX(), player.getY(), random);
             audioManager.playWaveStart();
         }
-        if (tickResult.isSpawnRequested()) {
-            enemies.add(waveDirector.createEnemyNearPlayer(player.getX(), player.getY(), random));
+        if (!tickResult.getSpawnedEnemies().isEmpty()) {
+            enemies.addAll(tickResult.getSpawnedEnemies());
         }
     }
 
@@ -407,7 +430,6 @@ public class Game extends Canvas {
         Set<String> activeRooms = new HashSet<>();
         boolean createdWindow = false;
         collectActiveRooms(activeRooms, enemies);
-        collectActiveRooms(activeRooms, pellets);
         collectActiveRooms(activeRooms, xps);
         collectActiveRooms(activeRooms, effectManager.getParticles());
 
@@ -753,6 +775,16 @@ public class Game extends Canvas {
 
     public void setShooting(boolean shooting) {
         this.shooting = shooting;
+    }
+
+    public void reloadGun() {
+        if (gameState != GameState.PLAYING) {
+            return;
+        }
+        if (player.reloadGun()) {
+            player.consumeReloadStarted();
+            audioManager.playReloadProgress(player.getGun());
+        }
     }
 
     public GameState getGameState() {
