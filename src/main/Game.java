@@ -19,6 +19,7 @@ import java.util.Random;
 import java.util.Set;
 
 import src.entity.Enemy;
+import src.entity.EnemyBullet;
 import src.entity.Gun;
 import src.entity.Particle;
 import src.entity.Pellet;
@@ -49,6 +50,7 @@ public class Game extends Canvas {
     private static final int HIT_COOLDOWN_TICKS = 60;
     private static final int GAME_START_GRACE_TICKS = 120;
     private static final int ROOM_TRANSITION_GRACE_TICKS = 36;
+    private static final double ZERO_LENGTH_EPSILON = 0.0001;
 
     private final GameWindow window;
     private final GameLoop gameLoop;
@@ -64,6 +66,7 @@ public class Game extends Canvas {
     private final UpgradeScreen upgradeScreen;
     private final Random random = new Random();
     private final List<Pellet> pellets = new ArrayList<>();
+    private final List<EnemyBullet> enemyBullets = new ArrayList<>();
     private final List<Enemy> enemies = new ArrayList<>();
     private final List<XP> xps = new ArrayList<>();
     private final Map<String, RoomWindow> roomWindows = new HashMap<>();
@@ -186,6 +189,10 @@ public class Game extends Canvas {
         updatePellets();
         updateXps();
         updateEnemies();
+        updateEnemyBullets();
+        resolveProjectileCollisions();
+        resolvePelletEnemyCollisions();
+        handleEnemyBulletPlayerCollisions();
         handlePlayerEnemyCollisions();
         sessionStats.updateLevel(player.getLevelingSystem().getLevel());
 
@@ -279,23 +286,31 @@ public class Game extends Canvas {
             return;
         }
 
-        List<Pellet> newPellets = player.shoot();
+        Enemy nearestEnemy = getNearestEnemy();
+        double shotAngle = player.getGunAngle();
+        if (nearestEnemy != null) {
+            shotAngle = player.aimGunDirectlyAt(nearestEnemy.getX(), nearestEnemy.getY());
+        }
+
+        List<Pellet> newPellets = player.shootFromCenter(shotAngle);
         if (newPellets.isEmpty()) {
             return;
         }
 
         pellets.addAll(newPellets);
+        double shotOriginX = player.getX();
+        double shotOriginY = player.getY();
         if (player.getGun() instanceof SMG) {
-            effectManager.emitMuzzleFlash(player.getGunX(), player.getGunY(), player.getGunAngle(),
+            effectManager.emitMuzzleFlash(shotOriginX, shotOriginY, shotAngle,
                     getShotEffectColor(player.getGun()), random, 2, 3, 1.8, 3);
         } else if (player.getGun() instanceof Shotgun) {
-            effectManager.emitMuzzleFlash(player.getGunX(), player.getGunY(), player.getGunAngle(),
+            effectManager.emitMuzzleFlash(shotOriginX, shotOriginY, shotAngle,
                     getShotEffectColor(player.getGun()), random, 7, 9, 4.8, 6);
         } else if (player.getGun() instanceof Sniper) {
-            effectManager.emitMuzzleFlash(player.getGunX(), player.getGunY(), player.getGunAngle(),
+            effectManager.emitMuzzleFlash(shotOriginX, shotOriginY, shotAngle,
                     getShotEffectColor(player.getGun()), random, 4, 5, 3.2, 4);
         } else {
-            effectManager.emitMuzzleFlash(player.getGunX(), player.getGunY(), player.getGunAngle(),
+            effectManager.emitMuzzleFlash(shotOriginX, shotOriginY, shotAngle,
                     getShotEffectColor(player.getGun()), random, 4, 6, 3.0, 4);
         }
         audioManager.playShot(player.getGun());
@@ -328,33 +343,7 @@ public class Game extends Canvas {
         while (pelletIterator.hasNext()) {
             Pellet pellet = pelletIterator.next();
             pellet.move();
-
-            boolean pelletRemoved = false;
-            for (int i = 0; i < enemies.size(); i++) {
-                Enemy enemy = enemies.get(i);
-                if (!checkCollision(pellet, enemy)) {
-                    continue;
-                }
-
-                enemy.setHealth(enemy.getHealth() - (int) pellet.getDamage());
-                applyKnockback(enemy, pellet);
-                effectManager.emitHitSparks(pellet.getX(), pellet.getY(), enemy.getColor(), random);
-                pelletIterator.remove();
-                pelletRemoved = true;
-
-                if (enemy.getHealth() <= 0) {
-                    enemies.remove(i);
-                    xps.add(new XP(enemy.getX(), enemy.getY(), enemy.getXpDropAmount()));
-                    effectManager.emitEnemyDeath(enemy.getX(), enemy.getY(), enemy.getColor(), random);
-                    audioManager.playEnemyDefeated();
-                    sessionStats.recordEnemyDefeated();
-                } else {
-                    audioManager.playEnemyHit();
-                }
-                break;
-            }
-
-            if (!pelletRemoved && isPelletOutOfRange(pellet)) {
+            if (isPelletOutOfRange(pellet)) {
                 pelletIterator.remove();
             }
         }
@@ -391,7 +380,110 @@ public class Game extends Canvas {
         double playerY = player.getY();
         for (Enemy enemy : enemies) {
             enemy.move();
-            enemy.moveToPlayer(playerX, playerY);
+            enemyBullets.addAll(enemy.updateBehavior(playerX, playerY));
+        }
+    }
+
+    private void updateEnemyBullets() {
+        Iterator<EnemyBullet> bulletIterator = enemyBullets.iterator();
+        while (bulletIterator.hasNext()) {
+            EnemyBullet enemyBullet = bulletIterator.next();
+            enemyBullet.move();
+            if (isEnemyBulletOutOfRange(enemyBullet)) {
+                bulletIterator.remove();
+            }
+        }
+    }
+
+    private void resolveProjectileCollisions() {
+        if (pellets.isEmpty() || enemyBullets.isEmpty()) {
+            return;
+        }
+
+        boolean[] cancelledEnemyBullets = new boolean[enemyBullets.size()];
+        boolean cancelledAny = false;
+        Iterator<Pellet> pelletIterator = pellets.iterator();
+        while (pelletIterator.hasNext()) {
+            Pellet pellet = pelletIterator.next();
+            for (int i = 0; i < enemyBullets.size(); i++) {
+                if (cancelledEnemyBullets[i]) {
+                    continue;
+                }
+
+                EnemyBullet enemyBullet = enemyBullets.get(i);
+                if (!checkCollision(pellet, enemyBullet)) {
+                    continue;
+                }
+
+                double clashX = (pellet.getX() + enemyBullet.getX()) / 2.0;
+                double clashY = (pellet.getY() + enemyBullet.getY()) / 2.0;
+                effectManager.emitProjectileClash(clashX, clashY, random);
+                pelletIterator.remove();
+                cancelledEnemyBullets[i] = true;
+                cancelledAny = true;
+                break;
+            }
+        }
+
+        if (!cancelledAny) {
+            return;
+        }
+
+        for (int i = enemyBullets.size() - 1; i >= 0; i--) {
+            if (cancelledEnemyBullets[i]) {
+                enemyBullets.remove(i);
+            }
+        }
+    }
+
+    private void resolvePelletEnemyCollisions() {
+        Iterator<Pellet> pelletIterator = pellets.iterator();
+        while (pelletIterator.hasNext()) {
+            Pellet pellet = pelletIterator.next();
+            for (int i = 0; i < enemies.size(); i++) {
+                Enemy enemy = enemies.get(i);
+                if (!checkCollision(pellet, enemy)) {
+                    continue;
+                }
+
+                enemy.setHealth(enemy.getHealth() - (int) pellet.getDamage());
+                applyKnockback(enemy, pellet);
+                effectManager.emitHitSparks(pellet.getX(), pellet.getY(), enemy.getColor(), random);
+                pelletIterator.remove();
+
+                if (enemy.getHealth() <= 0) {
+                    enemies.remove(i);
+                    xps.add(new XP(enemy.getX(), enemy.getY(), enemy.getXpDropAmount()));
+                    effectManager.emitEnemyDeath(enemy.getX(), enemy.getY(), enemy.getColor(), random);
+                    audioManager.playEnemyDefeated();
+                    sessionStats.recordEnemyDefeated();
+                } else {
+                    audioManager.playEnemyHit();
+                }
+                break;
+            }
+        }
+    }
+
+    private void handleEnemyBulletPlayerCollisions() {
+        if (hitCooldownTicksRemaining > 0 || playerGraceTicksRemaining > 0) {
+            return;
+        }
+
+        Iterator<EnemyBullet> bulletIterator = enemyBullets.iterator();
+        while (bulletIterator.hasNext()) {
+            EnemyBullet enemyBullet = bulletIterator.next();
+            if (!checkCollision(player, enemyBullet)) {
+                continue;
+            }
+
+            player.takeDamage(enemyBullet.getDamage());
+            hitCooldownTicksRemaining = HIT_COOLDOWN_TICKS;
+            effectManager.triggerDamageFlash();
+            effectManager.emitHitSparks(enemyBullet.getX(), enemyBullet.getY(), Color.ORANGE, random);
+            audioManager.playPlayerHit();
+            bulletIterator.remove();
+            break;
         }
     }
 
@@ -482,6 +574,9 @@ public class Game extends Canvas {
                 entityY = xp.getY();
             } else if (entity instanceof Particle) {
                 Particle particle = (Particle) entity;
+                if (!particle.activatesRoomWindow()) {
+                    continue;
+                }
                 entityX = particle.getX();
                 entityY = particle.getY();
             } else {
@@ -508,6 +603,9 @@ public class Game extends Canvas {
 
         for (Enemy enemy : enemies) {
             getOrCreateBucket(enemy.getX(), enemy.getY()).getEnemies().add(enemy);
+        }
+        for (EnemyBullet enemyBullet : enemyBullets) {
+            getOrCreateBucket(enemyBullet.getX(), enemyBullet.getY()).getEnemyBullets().add(enemyBullet);
         }
         for (Pellet pellet : pellets) {
             getOrCreateBucket(pellet.getX(), pellet.getY()).getPellets().add(pellet);
@@ -620,9 +718,27 @@ public class Game extends Canvas {
     }
 
     private boolean checkCollision(Pellet pellet, Enemy enemy) {
-        double dx = pellet.getX() - enemy.getX();
-        double dy = pellet.getY() - enemy.getY();
         double radius = (enemy.getSize() / 2.0) + (pellet.getSize() / 2.0);
+        double startX = pellet.getPreviousX();
+        double startY = pellet.getPreviousY();
+        double endX = pellet.getX();
+        double endY = pellet.getY();
+        double segmentX = endX - startX;
+        double segmentY = endY - startY;
+        double segmentLengthSquared = (segmentX * segmentX) + (segmentY * segmentY);
+
+        if (segmentLengthSquared <= ZERO_LENGTH_EPSILON) {
+            double dx = endX - enemy.getX();
+            double dy = endY - enemy.getY();
+            return (dx * dx) + (dy * dy) <= radius * radius;
+        }
+
+        double projection = ((enemy.getX() - startX) * segmentX) + ((enemy.getY() - startY) * segmentY);
+        double t = Math.max(0.0, Math.min(1.0, projection / segmentLengthSquared));
+        double closestX = startX + (segmentX * t);
+        double closestY = startY + (segmentY * t);
+        double dx = closestX - enemy.getX();
+        double dy = closestY - enemy.getY();
         return (dx * dx) + (dy * dy) <= radius * radius;
     }
 
@@ -633,6 +749,53 @@ public class Game extends Canvas {
         return (dx * dx) + (dy * dy) <= radius * radius;
     }
 
+    private boolean checkCollision(Player currentPlayer, EnemyBullet enemyBullet) {
+        double radius = PLAYER_COLLISION_RADIUS + (enemyBullet.getSize() / 2.0);
+        double startX = enemyBullet.getPreviousX();
+        double startY = enemyBullet.getPreviousY();
+        double endX = enemyBullet.getX();
+        double endY = enemyBullet.getY();
+        double segmentX = endX - startX;
+        double segmentY = endY - startY;
+        double segmentLengthSquared = (segmentX * segmentX) + (segmentY * segmentY);
+
+        if (segmentLengthSquared <= ZERO_LENGTH_EPSILON) {
+            double dx = endX - currentPlayer.getX();
+            double dy = endY - currentPlayer.getY();
+            return (dx * dx) + (dy * dy) <= radius * radius;
+        }
+
+        double projection = ((currentPlayer.getX() - startX) * segmentX) + ((currentPlayer.getY() - startY) * segmentY);
+        double t = Math.max(0.0, Math.min(1.0, projection / segmentLengthSquared));
+        double closestX = startX + (segmentX * t);
+        double closestY = startY + (segmentY * t);
+        double dx = closestX - currentPlayer.getX();
+        double dy = closestY - currentPlayer.getY();
+        return (dx * dx) + (dy * dy) <= radius * radius;
+    }
+
+    private boolean checkCollision(Pellet pellet, EnemyBullet enemyBullet) {
+        double radius = (pellet.getSize() / 2.0) + (enemyBullet.getSize() / 2.0);
+        double relativeStartX = pellet.getPreviousX() - enemyBullet.getPreviousX();
+        double relativeStartY = pellet.getPreviousY() - enemyBullet.getPreviousY();
+        double relativeVelocityX = (pellet.getX() - pellet.getPreviousX())
+                - (enemyBullet.getX() - enemyBullet.getPreviousX());
+        double relativeVelocityY = (pellet.getY() - pellet.getPreviousY())
+                - (enemyBullet.getY() - enemyBullet.getPreviousY());
+        double relativeSpeedSquared = (relativeVelocityX * relativeVelocityX)
+                + (relativeVelocityY * relativeVelocityY);
+
+        double t = 0.0;
+        if (relativeSpeedSquared > ZERO_LENGTH_EPSILON) {
+            double projection = -((relativeStartX * relativeVelocityX) + (relativeStartY * relativeVelocityY));
+            t = Math.max(0.0, Math.min(1.0, projection / relativeSpeedSquared));
+        }
+
+        double closestX = relativeStartX + (relativeVelocityX * t);
+        double closestY = relativeStartY + (relativeVelocityY * t);
+        return (closestX * closestX) + (closestY * closestY) <= radius * radius;
+    }
+
     private boolean isPelletOutOfRange(Pellet pellet) {
         double minX = (roomCol - 2) * roomWidth;
         double maxX = (roomCol + 3) * roomWidth;
@@ -641,11 +804,20 @@ public class Game extends Canvas {
         return pellet.getX() < minX || pellet.getX() > maxX || pellet.getY() < minY || pellet.getY() > maxY;
     }
 
+    private boolean isEnemyBulletOutOfRange(EnemyBullet enemyBullet) {
+        double minX = (roomCol - 2) * roomWidth;
+        double maxX = (roomCol + 3) * roomWidth;
+        double minY = (roomRow - 2) * roomHeight;
+        double maxY = (roomRow + 3) * roomHeight;
+        return enemyBullet.getX() < minX || enemyBullet.getX() > maxX || enemyBullet.getY() < minY
+                || enemyBullet.getY() > maxY;
+    }
+
     private void applyKnockback(Enemy enemy, Pellet pellet) {
         double dx = enemy.getX() - pellet.getX();
         double dy = enemy.getY() - pellet.getY();
         double distanceSquared = (dx * dx) + (dy * dy);
-        if (distanceSquared <= 0.0001) {
+        if (distanceSquared <= ZERO_LENGTH_EPSILON) {
             return;
         }
 
@@ -658,7 +830,7 @@ public class Game extends Canvas {
         double dx = player.getX() - enemy.getX();
         double dy = player.getY() - enemy.getY();
         double distanceSquared = (dx * dx) + (dy * dy);
-        if (distanceSquared <= 0.0001) {
+        if (distanceSquared <= ZERO_LENGTH_EPSILON) {
             return;
         }
 
@@ -711,6 +883,7 @@ public class Game extends Canvas {
 
     private void resetRunState() {
         pellets.clear();
+        enemyBullets.clear();
         enemies.clear();
         xps.clear();
         effectManager.reset();

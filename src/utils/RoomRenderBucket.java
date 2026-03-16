@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import src.entity.Enemy;
+import src.entity.EnemyBullet;
 import src.entity.Particle;
 import src.entity.Pellet;
 import src.entity.XP;
@@ -12,6 +13,7 @@ public class RoomRenderBucket {
     private final int roomCol;
     private final int roomRow;
     private final List<Enemy> enemies = new ArrayList<>();
+    private final List<EnemyBullet> enemyBullets = new ArrayList<>();
     private final List<Pellet> pellets = new ArrayList<>();
     private final List<XP> xps = new ArrayList<>();
     private final List<Particle> particles = new ArrayList<>();
@@ -35,6 +37,10 @@ public class RoomRenderBucket {
 
     public List<Enemy> getEnemies() {
         return enemies;
+    }
+
+    public List<EnemyBullet> getEnemyBullets() {
+        return enemyBullets;
     }
 
     public List<Pellet> getPellets() {

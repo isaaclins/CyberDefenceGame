@@ -12,9 +12,15 @@ public class Particle {
     private final double friction;
     private Color color;
     private final int priority;
+    private final boolean activatesRoomWindow;
 
     public Particle(double x, double y, double dx, double dy, int lifetime, double size, double friction, Color color,
             int priority) {
+        this(x, y, dx, dy, lifetime, size, friction, color, priority, true);
+    }
+
+    public Particle(double x, double y, double dx, double dy, int lifetime, double size, double friction, Color color,
+            int priority, boolean activatesRoomWindow) {
         this.x = x;
         this.y = y;
         this.dx = dx;
@@ -25,6 +31,7 @@ public class Particle {
         this.friction = friction;
         this.color = color;
         this.priority = priority;
+        this.activatesRoomWindow = activatesRoomWindow;
     }
 
     public void tick() {
@@ -57,5 +64,9 @@ public class Particle {
 
     public int getPriority() {
         return priority;
+    }
+
+    public boolean activatesRoomWindow() {
+        return activatesRoomWindow;
     }
 }

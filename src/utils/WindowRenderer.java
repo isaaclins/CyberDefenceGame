@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.awt.Graphics2D;
 
 import src.entity.Enemy;
+import src.entity.EnemyBullet;
 import src.entity.Particle;
 import src.entity.Pellet;
 import src.entity.XP;
@@ -30,6 +31,9 @@ public class WindowRenderer {
         if (bucket != null) {
             for (Enemy enemy : bucket.getEnemies()) {
                 enemy.render(g2d);
+            }
+            for (EnemyBullet enemyBullet : bucket.getEnemyBullets()) {
+                enemyBullet.render(g2d);
             }
             for (Pellet pellet : bucket.getPellets()) {
                 pellet.render(g2d);

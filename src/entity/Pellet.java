@@ -8,6 +8,7 @@ public class Pellet {
     private static final Color PELLET_CORE_COLOR = new Color(255, 255, 220);
 
     private double x, y;
+    private double previousX, previousY;
     private double velocityX, velocityY;
     private double damage;
     private double size;
@@ -16,6 +17,8 @@ public class Pellet {
     public Pellet(double x, double y, double angle, double speed, double damage, double size, double knockback) {
         this.x = x;
         this.y = y;
+        this.previousX = x;
+        this.previousY = y;
         this.velocityX = speed * Math.cos(angle);
         this.velocityY = speed * Math.sin(angle);
         this.damage = damage;
@@ -24,6 +27,8 @@ public class Pellet {
     }
 
     public void move() {
+        previousX = x;
+        previousY = y;
         x += velocityX;
         y += velocityY;
     }
@@ -47,6 +52,14 @@ public class Pellet {
 
     public double getY() {
         return y;
+    }
+
+    public double getPreviousX() {
+        return previousX;
+    }
+
+    public double getPreviousY() {
+        return previousY;
     }
 
     public double getDamage() {

@@ -22,6 +22,8 @@ public class EffectManager {
     private static final Color DAMAGE_FLASH_COLOR = new Color(255, 64, 64);
     private static final Color WAVE_PULSE_COLOR = new Color(64, 220, 255);
     private static final Color LEVEL_PULSE_COLOR = new Color(96, 255, 160);
+    private static final Color PROJECTILE_CLASH_CORE_COLOR = new Color(255, 248, 210);
+    private static final Color PROJECTILE_CLASH_SPARK_COLOR = new Color(120, 228, 255);
     private static final Stroke OVERLAY_STROKE = new BasicStroke(6f);
 
     private final List<Particle> particles = new ArrayList<>();
@@ -99,6 +101,13 @@ public class EffectManager {
 
     public void emitXpPickup(double x, double y, Random random) {
         emitBurst(3 + random.nextInt(2), x, y, 0.7, 1.8, 10, 16, 2.0, 3.2, 0.9, Color.GREEN, 1, random);
+    }
+
+    public void emitProjectileClash(double x, double y, Random random) {
+        emitBurst(8 + random.nextInt(3), x, y, 0.8, 1.6, 8, 14, 2.0, 3.4, 0.9, PROJECTILE_CLASH_CORE_COLOR, 1,
+                false, random);
+        emitBurst(5 + random.nextInt(3), x, y, 1.0, 2.0, 8, 12, 1.4, 2.4, 0.88, PROJECTILE_CLASH_SPARK_COLOR, 1,
+                false, random);
     }
 
     public void emitLevelUp(double x, double y, Random random) {
@@ -180,6 +189,13 @@ public class EffectManager {
     private void emitBurst(int count, double x, double y, double minSpeed, double maxSpeed, int minLifetime,
             int maxLifetime, double minSize, double maxSize, double friction, Color color, int priority,
             Random random) {
+        emitBurst(count, x, y, minSpeed, maxSpeed, minLifetime, maxLifetime, minSize, maxSize, friction, color,
+                priority, true, random);
+    }
+
+    private void emitBurst(int count, double x, double y, double minSpeed, double maxSpeed, int minLifetime,
+            int maxLifetime, double minSize, double maxSize, double friction, Color color, int priority,
+            boolean activatesRoomWindow, Random random) {
         for (int i = 0; i < count; i++) {
             double angle = random.nextDouble() * Math.PI * 2;
             double speed = minSpeed + (random.nextDouble() * (maxSpeed - minSpeed));
@@ -187,7 +203,7 @@ public class EffectManager {
             double dy = Math.sin(angle) * speed;
             int lifetime = minLifetime + random.nextInt((maxLifetime - minLifetime) + 1);
             double size = minSize + (random.nextDouble() * (maxSize - minSize));
-            addParticle(new Particle(x, y, dx, dy, lifetime, size, friction, color, priority));
+            addParticle(new Particle(x, y, dx, dy, lifetime, size, friction, color, priority, activatesRoomWindow));
         }
     }
 

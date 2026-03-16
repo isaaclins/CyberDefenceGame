@@ -12,6 +12,7 @@ import src.entity.ExponentialEnemy;
 import src.entity.NormalEnemy;
 import src.entity.SmallEnemy;
 import src.entity.SinusEnemy;
+import src.entity.SpiralEnemy;
 
 public class WaveDirector {
     private static final int INTER_WAVE_TICKS = 60 * 5;
@@ -24,7 +25,9 @@ public class WaveDirector {
     private static final int COSINUS_XP_DROP = 24;
     private static final int EXPONENTIAL_XP_DROP = 35;
     private static final int BIG_XP_DROP = 50;
+    private static final int SPIRAL_XP_DROP = 45;
     private static final double PAIR_SEPARATION = 28.0;
+    private static final int SPIRAL_UNLOCK_WAVE = 1;
 
     private int waveNumber;
     private int enemiesToSpawn;
@@ -117,6 +120,7 @@ public class WaveDirector {
         int smallWeight = getSmallEnemyWeight();
         int normalWeight = getNormalEnemyWeight();
         int exponentialWeight = getExponentialEnemyWeight();
+        int spiralWeight = getSpiralEnemyWeight();
 
         if (roll < smallWeight) {
             return new SmallEnemy(spawnX, spawnY);
@@ -126,6 +130,9 @@ public class WaveDirector {
         }
         if (roll < smallWeight + normalWeight + exponentialWeight) {
             return new ExponentialEnemy(spawnX, spawnY);
+        }
+        if (roll < smallWeight + normalWeight + exponentialWeight + spiralWeight) {
+            return new SpiralEnemy(spawnX, spawnY);
         }
         return new BigEnemy(spawnX, spawnY);
     }
@@ -170,7 +177,8 @@ public class WaveDirector {
         }
 
         int weightedSingleXp = (getSmallEnemyWeight() * SMALL_XP_DROP) + (getNormalEnemyWeight() * NORMAL_XP_DROP)
-                + (getExponentialEnemyWeight() * EXPONENTIAL_XP_DROP) + (getBigEnemyWeight() * BIG_XP_DROP);
+                + (getExponentialEnemyWeight() * EXPONENTIAL_XP_DROP) + (getSpiralEnemyWeight() * SPIRAL_XP_DROP)
+                + (getBigEnemyWeight() * BIG_XP_DROP);
         int regularXpPerKill = Math.max(1, Math.round(weightedSingleXp / (float) singleEnemyWeightTotal));
         int totalEnemies = Math.max(1, getTotalEnemiesForWave(waveNumber));
         int totalEstimatedXp = (regularEnemyKills * regularXpPerKill) + getGuaranteedSinCosXp();
@@ -210,7 +218,8 @@ public class WaveDirector {
     }
 
     private int getSingleEnemyWeightTotal() {
-        return getSmallEnemyWeight() + getNormalEnemyWeight() + getExponentialEnemyWeight() + getBigEnemyWeight();
+        return getSmallEnemyWeight() + getNormalEnemyWeight() + getExponentialEnemyWeight()
+                + getSpiralEnemyWeight() + getBigEnemyWeight();
     }
 
     private int getSmallEnemyWeight() {
@@ -260,6 +269,19 @@ public class WaveDirector {
             return 8;
         }
         return 14;
+    }
+
+    private int getSpiralEnemyWeight() {
+        if (waveNumber < SPIRAL_UNLOCK_WAVE) {
+            return 0;
+        }
+        if (waveNumber <= 6) {
+            return 10;
+        }
+        if (waveNumber <= 9) {
+            return 16;
+        }
+        return 22;
     }
 
     private int getGuaranteedSinCosKills() {

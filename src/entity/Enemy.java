@@ -6,6 +6,8 @@ import java.awt.Graphics2D;
 import java.awt.Stroke;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Rectangle2D;
+import java.util.Collections;
+import java.util.List;
 import src.utils.GlowRenderer;
 
 public abstract class Enemy {
@@ -55,6 +57,11 @@ public abstract class Enemy {
         velocityX += speed * (dx / distance);
         velocityY += speed * (dy / distance);
         facingAngle = Math.atan2(dy, dx);
+    }
+
+    public List<EnemyBullet> updateBehavior(double playerX, double playerY) {
+        moveToPlayer(playerX, playerY);
+        return Collections.emptyList();
     }
 
     public void applyKnockback(double knockbackX, double knockbackY) {

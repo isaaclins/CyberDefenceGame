@@ -59,6 +59,13 @@ public class Player {
         return gun.shoot(gunX, gunY, gunAngle);
     }
 
+    public java.util.ArrayList<Pellet> shootFromCenter(double angle) {
+        if (gun == null) {
+            return new java.util.ArrayList<>();
+        }
+        return gun.shoot(x, y, angle);
+    }
+
     public Gun.TickResult tickGun() {
         if (gun == null) {
             return Gun.TickResult.of(false, false);
@@ -73,6 +80,13 @@ public class Player {
 
     public void updateGunAngle(double targetX, double targetY) {
         targetGunAngle = Math.atan2(targetY - y, targetX - x);
+    }
+
+    public double aimGunDirectlyAt(double targetX, double targetY) {
+        updateGunAngle(targetX, targetY);
+        gunAngle = targetGunAngle;
+        updateGunPosition();
+        return gunAngle;
     }
 
     public void smoothGunTransition() {

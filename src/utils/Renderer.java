@@ -1,6 +1,7 @@
 package src.utils;
 
 import src.entity.Enemy;
+import src.entity.EnemyBullet;
 import src.entity.Pellet;
 import src.entity.Player;
 import src.entity.XP;
@@ -159,6 +160,9 @@ public class Renderer {
     private void renderBucket(Graphics2D g2d, RoomRenderBucket bucket) {
         for (Enemy enemy : bucket.getEnemies()) {
             enemy.render(g2d);
+        }
+        for (EnemyBullet enemyBullet : bucket.getEnemyBullets()) {
+            enemyBullet.render(g2d);
         }
         for (Pellet pellet : bucket.getPellets()) {
             pellet.render(g2d);

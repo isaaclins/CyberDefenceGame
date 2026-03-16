@@ -41,6 +41,9 @@ assert_absent "new Thread\\(" src/entity/Gun.java src/main/Game.java
 assert_absent "collectActiveRooms\\(activeRooms, pellets\\)" src/main/Game.java
 assert_present "VK_R" src/utils/InputHandler.java
 assert_present "playReloadProgress" src/main/Game.java src/utils/AudioManager.java
+assert_present "shootFromCenter" src/entity/Player.java src/main/Game.java
+assert_present "aimGunDirectlyAt" src/entity/Player.java src/main/Game.java
+assert_present "getPreviousX|getPreviousY" src/entity/Pellet.java src/main/Game.java
 
 if [ "$fail" -ne 0 ]; then
     exit 1
