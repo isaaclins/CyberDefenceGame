@@ -9,10 +9,13 @@ import src.entity.BigEnemy;
 import src.entity.CosinusEnemy;
 import src.entity.Enemy;
 import src.entity.ExponentialEnemy;
+import src.entity.LaserTwinEnemy;
+import src.entity.MutantEnemy;
 import src.entity.NormalEnemy;
 import src.entity.SmallEnemy;
 import src.entity.SinusEnemy;
 import src.entity.SpiralEnemy;
+import src.entity.WarperEnemy;
 
 public class WaveDirector {
     private static final int INTER_WAVE_TICKS = 60 * 5;
@@ -21,13 +24,19 @@ public class WaveDirector {
     private static final int SIN_COS_UNLOCK_WAVE = 2;
     private static final int SMALL_XP_DROP = 10;
     private static final int NORMAL_XP_DROP = 20;
+    private static final int LASER_TWIN_XP_DROP = 24;
+    private static final int MUTANT_XP_DROP = 42;
     private static final int SINUS_XP_DROP = 24;
     private static final int COSINUS_XP_DROP = 24;
     private static final int EXPONENTIAL_XP_DROP = 35;
     private static final int BIG_XP_DROP = 50;
     private static final int SPIRAL_XP_DROP = 45;
+    private static final int WARPER_XP_DROP = 70;
     private static final double PAIR_SEPARATION = 28.0;
     private static final int SPIRAL_UNLOCK_WAVE = 1;
+    private static final int LASER_TWIN_UNLOCK_WAVE = 3;
+    private static final int MUTANT_UNLOCK_WAVE = 4;
+    private static final int WARPER_UNLOCK_WAVE = 5;
 
     private int waveNumber;
     private int enemiesToSpawn;
@@ -119,8 +128,11 @@ public class WaveDirector {
         int roll = random.nextInt(getSingleEnemyWeightTotal());
         int smallWeight = getSmallEnemyWeight();
         int normalWeight = getNormalEnemyWeight();
+        int laserTwinWeight = getLaserTwinWeight();
+        int mutantWeight = getMutantWeight();
         int exponentialWeight = getExponentialEnemyWeight();
         int spiralWeight = getSpiralEnemyWeight();
+        int warperWeight = getWarperWeight();
 
         if (roll < smallWeight) {
             return new SmallEnemy(spawnX, spawnY);
@@ -128,11 +140,21 @@ public class WaveDirector {
         if (roll < smallWeight + normalWeight) {
             return new NormalEnemy(spawnX, spawnY);
         }
-        if (roll < smallWeight + normalWeight + exponentialWeight) {
+        if (roll < smallWeight + normalWeight + laserTwinWeight) {
+            return new LaserTwinEnemy(spawnX, spawnY);
+        }
+        if (roll < smallWeight + normalWeight + laserTwinWeight + mutantWeight) {
+            return new MutantEnemy(spawnX, spawnY);
+        }
+        if (roll < smallWeight + normalWeight + laserTwinWeight + mutantWeight + exponentialWeight) {
             return new ExponentialEnemy(spawnX, spawnY);
         }
-        if (roll < smallWeight + normalWeight + exponentialWeight + spiralWeight) {
+        if (roll < smallWeight + normalWeight + laserTwinWeight + mutantWeight + exponentialWeight + spiralWeight) {
             return new SpiralEnemy(spawnX, spawnY);
+        }
+        if (roll < smallWeight + normalWeight + laserTwinWeight + mutantWeight + exponentialWeight + spiralWeight
+                + warperWeight) {
+            return new WarperEnemy(spawnX, spawnY);
         }
         return new BigEnemy(spawnX, spawnY);
     }
@@ -177,7 +199,9 @@ public class WaveDirector {
         }
 
         int weightedSingleXp = (getSmallEnemyWeight() * SMALL_XP_DROP) + (getNormalEnemyWeight() * NORMAL_XP_DROP)
+                + (getLaserTwinWeight() * LASER_TWIN_XP_DROP) + (getMutantWeight() * MUTANT_XP_DROP)
                 + (getExponentialEnemyWeight() * EXPONENTIAL_XP_DROP) + (getSpiralEnemyWeight() * SPIRAL_XP_DROP)
+                + (getWarperWeight() * WARPER_XP_DROP)
                 + (getBigEnemyWeight() * BIG_XP_DROP);
         int regularXpPerKill = Math.max(1, Math.round(weightedSingleXp / (float) singleEnemyWeightTotal));
         int totalEnemies = Math.max(1, getTotalEnemiesForWave(waveNumber));
@@ -218,8 +242,8 @@ public class WaveDirector {
     }
 
     private int getSingleEnemyWeightTotal() {
-        return getSmallEnemyWeight() + getNormalEnemyWeight() + getExponentialEnemyWeight()
-                + getSpiralEnemyWeight() + getBigEnemyWeight();
+        return getSmallEnemyWeight() + getNormalEnemyWeight() + getLaserTwinWeight() + getMutantWeight()
+                + getExponentialEnemyWeight() + getSpiralEnemyWeight() + getWarperWeight() + getBigEnemyWeight();
     }
 
     private int getSmallEnemyWeight() {
@@ -261,6 +285,29 @@ public class WaveDirector {
         return 25;
     }
 
+    private int getLaserTwinWeight() {
+        if (waveNumber < LASER_TWIN_UNLOCK_WAVE) {
+            return 0;
+        }
+        if (waveNumber <= 7) {
+            return 16;
+        }
+        return 24;
+    }
+
+    private int getMutantWeight() {
+        if (waveNumber < MUTANT_UNLOCK_WAVE) {
+            return 0;
+        }
+        if (waveNumber <= 6) {
+            return 8;
+        }
+        if (waveNumber <= 9) {
+            return 14;
+        }
+        return 18;
+    }
+
     private int getExponentialEnemyWeight() {
         if (waveNumber <= 5) {
             return 0;
@@ -282,6 +329,19 @@ public class WaveDirector {
             return 16;
         }
         return 22;
+    }
+
+    private int getWarperWeight() {
+        if (waveNumber < WARPER_UNLOCK_WAVE) {
+            return 0;
+        }
+        if (waveNumber <= 7) {
+            return 6;
+        }
+        if (waveNumber <= 10) {
+            return 10;
+        }
+        return 14;
     }
 
     private int getGuaranteedSinCosKills() {

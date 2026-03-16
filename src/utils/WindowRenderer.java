@@ -5,6 +5,7 @@ import java.awt.Graphics2D;
 
 import src.entity.Enemy;
 import src.entity.EnemyBullet;
+import src.entity.LaserLink;
 import src.entity.Particle;
 import src.entity.Pellet;
 import src.entity.XP;
@@ -29,6 +30,9 @@ public class WindowRenderer {
         renderRoom(g2d, (int) (cameraX / roomWidth), (int) (cameraY / roomHeight));
 
         if (bucket != null) {
+            for (LaserLink laserLink : bucket.getLaserLinks()) {
+                laserLink.render(g2d);
+            }
             for (Enemy enemy : bucket.getEnemies()) {
                 enemy.render(g2d);
             }

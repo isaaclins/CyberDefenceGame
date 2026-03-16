@@ -31,6 +31,8 @@ public class InputHandler implements KeyListener, MouseMotionListener, MouseList
             game.setLeftPressed(true);
         if (code == KeyEvent.VK_D)
             game.setRightPressed(true);
+        if (code == KeyEvent.VK_SHIFT)
+            game.setDashPressed(true);
         if (code == KeyEvent.VK_SPACE)
             game.setShooting(true);
         if (code == KeyEvent.VK_R)
@@ -51,6 +53,8 @@ public class InputHandler implements KeyListener, MouseMotionListener, MouseList
             game.setLeftPressed(false);
         if (code == KeyEvent.VK_D)
             game.setRightPressed(false);
+        if (code == KeyEvent.VK_SHIFT)
+            game.setDashPressed(false);
         if (code == KeyEvent.VK_SPACE)
             game.setShooting(false);
     }

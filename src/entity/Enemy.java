@@ -91,6 +91,13 @@ public abstract class Enemy {
         g2d.setTransform(oldTransform);
     }
 
+    public void teleportTo(double x, double y) {
+        this.x = x;
+        this.y = y;
+        this.velocityX = 0;
+        this.velocityY = 0;
+    }
+
     public double getX() {
         return x;
     }
@@ -117,6 +124,10 @@ public abstract class Enemy {
 
     public double getSize() {
         return size;
+    }
+
+    public double getRenderRadius() {
+        return size / 2.0;
     }
 
     public void setHealth(int health) {

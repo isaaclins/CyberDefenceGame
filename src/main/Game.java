@@ -20,13 +20,18 @@ import java.util.Set;
 
 import src.entity.Enemy;
 import src.entity.EnemyBullet;
+import src.entity.FloatingText;
 import src.entity.Gun;
+import src.entity.LaserLink;
+import src.entity.LaserTwinEnemy;
+import src.entity.MutantEnemy;
 import src.entity.Particle;
 import src.entity.Pellet;
 import src.entity.Player;
 import src.entity.SMG;
 import src.entity.Shotgun;
 import src.entity.Sniper;
+import src.entity.WarperEnemy;
 import src.entity.XP;
 import src.screens.GameOverScreen;
 import src.screens.MenuScreen;
@@ -50,6 +55,14 @@ public class Game extends Canvas {
     private static final int HIT_COOLDOWN_TICKS = 60;
     private static final int GAME_START_GRACE_TICKS = 120;
     private static final int ROOM_TRANSITION_GRACE_TICKS = 36;
+    private static final int HEART_RECOVERY_WAVE_INTERVAL = 5;
+    private static final int HEAL_TEXT_LIFETIME_TICKS = 48;
+    private static final int LASER_LINK_DAMAGE = 1;
+    private static final double LASER_PAIR_HALF_SPAN = 60.0;
+    private static final double LASER_PAIR_ADVANCE_DISTANCE = 24.0;
+    private static final double LASER_LINK_ROOM_PADDING = 8.0;
+    private static final double LASER_LINK_COLLISION_RADIUS = PLAYER_COLLISION_RADIUS + 4.0;
+    private static final int MUTANT_EXPOSURE_RECOVERY_PER_TICK = 2;
     private static final double ZERO_LENGTH_EPSILON = 0.0001;
 
     private final GameWindow window;
@@ -68,6 +81,8 @@ public class Game extends Canvas {
     private final List<Pellet> pellets = new ArrayList<>();
     private final List<EnemyBullet> enemyBullets = new ArrayList<>();
     private final List<Enemy> enemies = new ArrayList<>();
+    private final List<FloatingText> floatingTexts = new ArrayList<>();
+    private final List<LaserLink> laserLinks = new ArrayList<>();
     private final List<XP> xps = new ArrayList<>();
     private final Map<String, RoomWindow> roomWindows = new HashMap<>();
     private final Map<String, RoomRenderBucket> roomBuckets = new HashMap<>();
@@ -87,9 +102,12 @@ public class Game extends Canvas {
     private boolean downPressed;
     private boolean leftPressed;
     private boolean rightPressed;
+    private boolean dashPressed;
+    private boolean dashRequested;
     private boolean shooting;
     private int hitCooldownTicksRemaining;
     private int playerGraceTicksRemaining;
+    private int mutantExposureTicks;
 
     public Game() {
         Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
@@ -157,12 +175,17 @@ public class Game extends Canvas {
     public void tickPlaying() {
         sessionStats.tick();
         effectManager.tick();
+        tickFloatingTexts();
+        tickLaserLinks();
 
         if (hitCooldownTicksRemaining > 0) {
             hitCooldownTicksRemaining--;
         }
         if (playerGraceTicksRemaining > 0) {
             playerGraceTicksRemaining--;
+        }
+        if (player.tickDashCooldown()) {
+            audioManager.playDashReady();
         }
 
         Gun.TickResult gunTickResult = player.tickGun();
@@ -174,6 +197,7 @@ public class Game extends Canvas {
             return;
         }
 
+        handleDashInput();
         player.move(upPressed, downPressed, leftPressed, rightPressed);
         if (updateRoomFromPlayerPosition()) {
             playerGraceTicksRemaining = ROOM_TRANSITION_GRACE_TICKS;
@@ -193,6 +217,8 @@ public class Game extends Canvas {
         resolveProjectileCollisions();
         resolvePelletEnemyCollisions();
         handleEnemyBulletPlayerCollisions();
+        handleLaserLinkPlayerCollisions();
+        handleMutantAuraPlayerCollisions();
         handlePlayerEnemyCollisions();
         sessionStats.updateLevel(player.getLevelingSystem().getLevel());
 
@@ -256,6 +282,7 @@ public class Game extends Canvas {
         prepareRoomBuckets();
         g2d.translate(-cameraX, -cameraY);
         renderer.render(g2d, player, roomBuckets, roomCol, roomRow);
+        renderFloatingTexts(g2d);
         g2d.translate(cameraX, cameraY);
 
         renderer.drawWaveNumber(g2d, getWidth(), waveDirector.getWaveNumber(), getKillsToNextLevelEstimate());
@@ -279,6 +306,21 @@ public class Game extends Canvas {
             player.spinGun();
         }
         player.smoothGunTransition();
+    }
+
+    private void handleDashInput() {
+        if (!dashRequested) {
+            return;
+        }
+
+        dashRequested = false;
+        if (!player.tryDash(upPressed, downPressed, leftPressed, rightPressed)) {
+            return;
+        }
+
+        effectManager.emitDash(player.getX(), player.getY(), player.getLastMoveDirectionX(),
+                player.getLastMoveDirectionY(), random);
+        audioManager.playDash();
     }
 
     private void shoot() {
@@ -378,10 +420,36 @@ public class Game extends Canvas {
     private void updateEnemies() {
         double playerX = player.getX();
         double playerY = player.getY();
+        WarperEnemy pendingWarper = null;
+
         for (Enemy enemy : enemies) {
             enemy.move();
-            enemyBullets.addAll(enemy.updateBehavior(playerX, playerY));
         }
+
+        reconcileLaserTwinLinks(playerX, playerY);
+
+        for (Enemy enemy : enemies) {
+            if (enemy instanceof LaserTwinEnemy && ((LaserTwinEnemy) enemy).isLinked()) {
+                continue;
+            }
+
+            if (enemy instanceof WarperEnemy) {
+                enemyBullets.addAll(((WarperEnemy) enemy).updateBehavior(playerX, playerY, enemies.size()));
+            } else {
+                enemyBullets.addAll(enemy.updateBehavior(playerX, playerY));
+            }
+            if (pendingWarper == null && enemy instanceof WarperEnemy && ((WarperEnemy) enemy).hasPendingWarp()) {
+                pendingWarper = (WarperEnemy) enemy;
+            }
+        }
+
+        if (pendingWarper != null && pendingWarper.consumePendingWarp()) {
+            swapPlayerWithWarper(pendingWarper);
+            playerX = player.getX();
+            playerY = player.getY();
+        }
+
+        updateLinkedLaserTwinBehavior(playerX, playerY);
     }
 
     private void updateEnemyBullets() {
@@ -452,6 +520,9 @@ public class Game extends Canvas {
                 pelletIterator.remove();
 
                 if (enemy.getHealth() <= 0) {
+                    if (enemy instanceof LaserTwinEnemy) {
+                        breakLaserTwinLink((LaserTwinEnemy) enemy);
+                    }
                     enemies.remove(i);
                     xps.add(new XP(enemy.getX(), enemy.getY(), enemy.getXpDropAmount()));
                     effectManager.emitEnemyDeath(enemy.getX(), enemy.getY(), enemy.getColor(), random);
@@ -487,6 +558,53 @@ public class Game extends Canvas {
         }
     }
 
+    private void handleLaserLinkPlayerCollisions() {
+        if (hitCooldownTicksRemaining > 0 || playerGraceTicksRemaining > 0) {
+            return;
+        }
+
+        for (LaserLink laserLink : laserLinks) {
+            if (!laserLink.isActive() || !checkCollision(player, laserLink)) {
+                continue;
+            }
+
+            player.takeDamage(LASER_LINK_DAMAGE);
+            hitCooldownTicksRemaining = HIT_COOLDOWN_TICKS;
+            effectManager.triggerDamageFlash();
+            effectManager.emitHitSparks(player.getX(), player.getY(), Color.RED, random);
+            audioManager.playPlayerHit();
+            break;
+        }
+    }
+
+    private void handleMutantAuraPlayerCollisions() {
+        if (playerGraceTicksRemaining > 0) {
+            mutantExposureTicks = 0;
+            return;
+        }
+
+        MutantEnemy radiatingMutant = getRadiatingMutant();
+        if (radiatingMutant == null) {
+            mutantExposureTicks = Math.max(0, mutantExposureTicks - MUTANT_EXPOSURE_RECOVERY_PER_TICK);
+            return;
+        }
+
+        audioManager.playMutantRadiationAura(getMutantAuraIntensity(radiatingMutant));
+        int maxExposureTicks = radiatingMutant.getExposureThresholdTicks() + HIT_COOLDOWN_TICKS;
+        mutantExposureTicks = Math.min(maxExposureTicks, mutantExposureTicks + 1);
+        if (hitCooldownTicksRemaining > 0 || mutantExposureTicks < radiatingMutant.getExposureThresholdTicks()) {
+            return;
+        }
+
+        player.takeDamage(radiatingMutant.getRadiationDamage());
+        mutantExposureTicks = radiatingMutant.getExposureResetTicks();
+        hitCooldownTicksRemaining = HIT_COOLDOWN_TICKS;
+        effectManager.triggerDamageFlash();
+        effectManager.emitHitSparks(player.getX(), player.getY(), radiatingMutant.getAuraColor(), random);
+        audioManager.playMutantRadiation();
+        audioManager.playPlayerHit();
+    }
+
     private void handlePlayerEnemyCollisions() {
         if (hitCooldownTicksRemaining > 0 || playerGraceTicksRemaining > 0) {
             return;
@@ -507,21 +625,61 @@ public class Game extends Canvas {
         }
     }
 
+    private MutantEnemy getRadiatingMutant() {
+        MutantEnemy radiatingMutant = null;
+        double nearestDistanceSquared = Double.MAX_VALUE;
+
+        for (Enemy enemy : enemies) {
+            if (!(enemy instanceof MutantEnemy)) {
+                continue;
+            }
+
+            MutantEnemy mutant = (MutantEnemy) enemy;
+            if (!checkCollision(player, mutant)) {
+                continue;
+            }
+
+            double dx = player.getX() - mutant.getX();
+            double dy = player.getY() - mutant.getY();
+            double distanceSquared = (dx * dx) + (dy * dy);
+            if (distanceSquared < nearestDistanceSquared) {
+                nearestDistanceSquared = distanceSquared;
+                radiatingMutant = mutant;
+            }
+        }
+
+        return radiatingMutant;
+    }
+
+    private double getMutantAuraIntensity(MutantEnemy mutant) {
+        double dx = player.getX() - mutant.getX();
+        double dy = player.getY() - mutant.getY();
+        double distance = Math.sqrt((dx * dx) + (dy * dy));
+        double safeDistance = Math.max(1.0, mutant.getAuraRadius());
+        double normalized = 1.0 - Math.min(1.0, distance / safeDistance);
+        return Math.max(0.0, normalized);
+    }
+
     private void advanceWave() {
         WaveDirector.WaveTickResult tickResult = waveDirector.tick(enemies.size(), player.getX(), player.getY(), random);
+        if (tickResult.isWaveCleared()) {
+            grantWaveRecovery();
+        }
         if (tickResult.isWaveStarted()) {
             effectManager.emitWaveStart(player.getX(), player.getY(), random);
             audioManager.playWaveStart();
         }
         if (!tickResult.getSpawnedEnemies().isEmpty()) {
             enemies.addAll(tickResult.getSpawnedEnemies());
+            reconcileLaserTwinLinks(player.getX(), player.getY());
         }
     }
 
     private void refreshRoomWindows() {
         Set<String> activeRooms = new HashSet<>();
         boolean createdWindow = false;
-        collectActiveRooms(activeRooms, enemies);
+        collectActiveEnemyRooms(activeRooms);
+        collectActiveLaserLinkRooms(activeRooms);
         collectActiveRooms(activeRooms, xps);
         collectActiveRooms(activeRooms, effectManager.getParticles());
 
@@ -560,11 +718,7 @@ public class Game extends Canvas {
             double entityX;
             double entityY;
 
-            if (entity instanceof Enemy) {
-                Enemy enemy = (Enemy) entity;
-                entityX = enemy.getX();
-                entityY = enemy.getY();
-            } else if (entity instanceof Pellet) {
+            if (entity instanceof Pellet) {
                 Pellet pellet = (Pellet) entity;
                 entityX = pellet.getX();
                 entityY = pellet.getY();
@@ -591,6 +745,28 @@ public class Game extends Canvas {
         }
     }
 
+    private void collectActiveEnemyRooms(Set<String> activeRooms) {
+        for (Enemy enemy : enemies) {
+            collectCoveredRooms(activeRooms, enemy.getX(), enemy.getY(), enemy.getRenderRadius());
+        }
+    }
+
+    private void collectCoveredRooms(Set<String> activeRooms, double centerX, double centerY, double radius) {
+        int minCol = toRoomCol(centerX - radius);
+        int maxCol = toRoomCol(centerX + radius);
+        int minRow = toRoomRow(centerY - radius);
+        int maxRow = toRoomRow(centerY + radius);
+
+        for (int col = minCol; col <= maxCol; col++) {
+            for (int row = minRow; row <= maxRow; row++) {
+                if (col == roomCol && row == roomRow) {
+                    continue;
+                }
+                activeRooms.add(RoomRenderBucket.key(col, row));
+            }
+        }
+    }
+
     private void updateMainWindowLocation() {
         Point shakeOffset = effectManager.getShakeOffset(random);
         int newWindowX = initialWindowLocation.x + (roomCol * WINDOW_WIDTH) + shakeOffset.x;
@@ -601,8 +777,11 @@ public class Game extends Canvas {
     private void prepareRoomBuckets() {
         roomBuckets.clear();
 
+        for (LaserLink laserLink : laserLinks) {
+            addLaserLinkToBuckets(laserLink);
+        }
         for (Enemy enemy : enemies) {
-            getOrCreateBucket(enemy.getX(), enemy.getY()).getEnemies().add(enemy);
+            addEnemyToBuckets(enemy);
         }
         for (EnemyBullet enemyBullet : enemyBullets) {
             getOrCreateBucket(enemyBullet.getX(), enemyBullet.getY()).getEnemyBullets().add(enemyBullet);
@@ -619,8 +798,10 @@ public class Game extends Canvas {
     }
 
     private RoomRenderBucket getOrCreateBucket(double x, double y) {
-        int col = toRoomCol(x);
-        int row = toRoomRow(y);
+        return getOrCreateBucket(toRoomCol(x), toRoomRow(y));
+    }
+
+    private RoomRenderBucket getOrCreateBucket(int col, int row) {
         String key = RoomRenderBucket.key(col, row);
         RoomRenderBucket bucket = roomBuckets.get(key);
         if (bucket == null) {
@@ -628,6 +809,20 @@ public class Game extends Canvas {
             roomBuckets.put(key, bucket);
         }
         return bucket;
+    }
+
+    private void addEnemyToBuckets(Enemy enemy) {
+        double renderRadius = enemy.getRenderRadius();
+        int minCol = toRoomCol(enemy.getX() - renderRadius);
+        int maxCol = toRoomCol(enemy.getX() + renderRadius);
+        int minRow = toRoomRow(enemy.getY() - renderRadius);
+        int maxRow = toRoomRow(enemy.getY() + renderRadius);
+
+        for (int col = minCol; col <= maxCol; col++) {
+            for (int row = minRow; row <= maxRow; row++) {
+                getOrCreateBucket(col, row).getEnemies().add(enemy);
+            }
+        }
     }
 
     private void renderRoomWindows() {
@@ -649,6 +844,23 @@ public class Game extends Canvas {
         FontMetrics fm = g2d.getFontMetrics();
         int x = (getWidth() - fm.stringWidth(text)) / 2;
         g2d.drawString(text, x, 72);
+    }
+
+    private void tickFloatingTexts() {
+        Iterator<FloatingText> iterator = floatingTexts.iterator();
+        while (iterator.hasNext()) {
+            FloatingText floatingText = iterator.next();
+            floatingText.tick();
+            if (!floatingText.isAlive()) {
+                iterator.remove();
+            }
+        }
+    }
+
+    private void renderFloatingTexts(Graphics2D g2d) {
+        for (FloatingText floatingText : floatingTexts) {
+            floatingText.render(g2d);
+        }
     }
 
     private void renderPaused(Graphics2D g2d) {
@@ -700,6 +912,25 @@ public class Game extends Canvas {
         return changed;
     }
 
+    private void swapPlayerWithWarper(WarperEnemy warper) {
+        double playerX = player.getX();
+        double playerY = player.getY();
+        double warperX = warper.getX();
+        double warperY = warper.getY();
+
+        player.teleportTo(warperX, warperY);
+        warper.teleportTo(playerX, playerY);
+        syncRoomToPlayerPosition();
+        effectManager.emitTeleportWave(player.getX(), player.getY(), random);
+    }
+
+    private void syncRoomToPlayerPosition() {
+        roomCol = toRoomCol(player.getX());
+        roomRow = toRoomRow(player.getY());
+        cameraX = roomCol * roomWidth;
+        cameraY = roomRow * roomHeight;
+    }
+
     private Enemy getNearestEnemy() {
         Enemy nearestEnemy = null;
         double nearestDistanceSquared = Double.MAX_VALUE;
@@ -715,6 +946,221 @@ public class Game extends Canvas {
         }
 
         return nearestEnemy;
+    }
+
+    private void tickLaserLinks() {
+        Iterator<LaserLink> iterator = laserLinks.iterator();
+        while (iterator.hasNext()) {
+            LaserLink laserLink = iterator.next();
+            laserLink.tick();
+            if (laserLink.isExpired()) {
+                iterator.remove();
+            }
+        }
+    }
+
+    private void reconcileLaserTwinLinks(double playerX, double playerY) {
+        List<LaserTwinEnemy> liveLaserTwins = collectLiveLaserTwins();
+        Set<LaserTwinEnemy> liveTwinSet = new HashSet<>(liveLaserTwins);
+        Set<LaserTwinEnemy> pairedLaserTwins = new HashSet<>();
+
+        for (LaserLink laserLink : laserLinks) {
+            if (!laserLink.isActive()) {
+                continue;
+            }
+
+            LaserTwinEnemy firstTwin = laserLink.getFirstTwin();
+            LaserTwinEnemy secondTwin = laserLink.getSecondTwin();
+            if (firstTwin == null || secondTwin == null || !liveTwinSet.contains(firstTwin)
+                    || !liveTwinSet.contains(secondTwin)) {
+                breakLaserLink(laserLink);
+                continue;
+            }
+
+            pairedLaserTwins.add(firstTwin);
+            pairedLaserTwins.add(secondTwin);
+        }
+
+        List<LaserTwinEnemy> availableLaserTwins = new ArrayList<>();
+        for (LaserTwinEnemy laserTwin : liveLaserTwins) {
+            if (!pairedLaserTwins.contains(laserTwin)) {
+                laserTwin.clearLinkedState();
+                availableLaserTwins.add(laserTwin);
+            }
+        }
+
+        while (availableLaserTwins.size() >= 2) {
+            int firstIndex = 0;
+            int secondIndex = 1;
+            double nearestDistanceSquared = Double.MAX_VALUE;
+
+            for (int i = 0; i < availableLaserTwins.size() - 1; i++) {
+                LaserTwinEnemy firstTwin = availableLaserTwins.get(i);
+                for (int j = i + 1; j < availableLaserTwins.size(); j++) {
+                    LaserTwinEnemy secondTwin = availableLaserTwins.get(j);
+                    double dx = firstTwin.getX() - secondTwin.getX();
+                    double dy = firstTwin.getY() - secondTwin.getY();
+                    double distanceSquared = (dx * dx) + (dy * dy);
+                    if (distanceSquared < nearestDistanceSquared) {
+                        nearestDistanceSquared = distanceSquared;
+                        firstIndex = i;
+                        secondIndex = j;
+                    }
+                }
+            }
+
+            LaserTwinEnemy firstTwin = availableLaserTwins.get(firstIndex);
+            LaserTwinEnemy secondTwin = availableLaserTwins.get(secondIndex);
+            laserLinks.add(createLaserLink(firstTwin, secondTwin, playerX, playerY));
+
+            availableLaserTwins.remove(secondIndex);
+            availableLaserTwins.remove(firstIndex);
+        }
+    }
+
+    private List<LaserTwinEnemy> collectLiveLaserTwins() {
+        List<LaserTwinEnemy> liveLaserTwins = new ArrayList<>();
+        for (Enemy enemy : enemies) {
+            if (enemy instanceof LaserTwinEnemy) {
+                liveLaserTwins.add((LaserTwinEnemy) enemy);
+            }
+        }
+        return liveLaserTwins;
+    }
+
+    private LaserLink createLaserLink(LaserTwinEnemy firstTwin, LaserTwinEnemy secondTwin, double playerX,
+            double playerY) {
+        int firstFormationSide = determineFormationSide(firstTwin, secondTwin, playerX, playerY);
+        firstTwin.setLinkedState(firstFormationSide);
+        secondTwin.setLinkedState(-firstFormationSide);
+        audioManager.playLaserLink();
+        return new LaserLink(firstTwin, secondTwin);
+    }
+
+    private int determineFormationSide(LaserTwinEnemy firstTwin, LaserTwinEnemy secondTwin, double playerX,
+            double playerY) {
+        double midpointX = (firstTwin.getX() + secondTwin.getX()) / 2.0;
+        double midpointY = (firstTwin.getY() + secondTwin.getY()) / 2.0;
+        double directionX = playerX - midpointX;
+        double directionY = playerY - midpointY;
+        double directionLengthSquared = (directionX * directionX) + (directionY * directionY);
+
+        if (directionLengthSquared <= ZERO_LENGTH_EPSILON) {
+            directionX = secondTwin.getX() - firstTwin.getX();
+            directionY = secondTwin.getY() - firstTwin.getY();
+            directionLengthSquared = (directionX * directionX) + (directionY * directionY);
+        }
+
+        if (directionLengthSquared <= ZERO_LENGTH_EPSILON) {
+            return firstTwin.getX() <= secondTwin.getX() ? -1 : 1;
+        }
+
+        double directionLength = Math.sqrt(directionLengthSquared);
+        double perpendicularX = -(directionY / directionLength);
+        double perpendicularY = directionX / directionLength;
+        double offsetX = firstTwin.getX() - midpointX;
+        double offsetY = firstTwin.getY() - midpointY;
+        double sideProjection = (offsetX * perpendicularX) + (offsetY * perpendicularY);
+
+        if (Math.abs(sideProjection) <= ZERO_LENGTH_EPSILON) {
+            return firstTwin.getX() <= secondTwin.getX() ? -1 : 1;
+        }
+
+        return sideProjection < 0 ? -1 : 1;
+    }
+
+    private void updateLinkedLaserTwinBehavior(double playerX, double playerY) {
+        for (LaserLink laserLink : laserLinks) {
+            if (!laserLink.isActive()) {
+                continue;
+            }
+
+            LaserTwinEnemy firstTwin = laserLink.getFirstTwin();
+            LaserTwinEnemy secondTwin = laserLink.getSecondTwin();
+            if (firstTwin == null || secondTwin == null) {
+                continue;
+            }
+
+            double midpointX = (firstTwin.getX() + secondTwin.getX()) / 2.0;
+            double midpointY = (firstTwin.getY() + secondTwin.getY()) / 2.0;
+            double directionX = playerX - midpointX;
+            double directionY = playerY - midpointY;
+            double directionLengthSquared = (directionX * directionX) + (directionY * directionY);
+
+            if (directionLengthSquared <= ZERO_LENGTH_EPSILON) {
+                directionX = 1.0;
+                directionY = 0.0;
+                directionLengthSquared = 1.0;
+            }
+
+            double directionLength = Math.sqrt(directionLengthSquared);
+            directionX /= directionLength;
+            directionY /= directionLength;
+
+            double perpendicularX = -directionY;
+            double perpendicularY = directionX;
+            double targetMidpointX = midpointX + (directionX * LASER_PAIR_ADVANCE_DISTANCE);
+            double targetMidpointY = midpointY + (directionY * LASER_PAIR_ADVANCE_DISTANCE);
+
+            firstTwin.updateLinkedBehavior(
+                    targetMidpointX + (perpendicularX * firstTwin.getFormationSide() * LASER_PAIR_HALF_SPAN),
+                    targetMidpointY + (perpendicularY * firstTwin.getFormationSide() * LASER_PAIR_HALF_SPAN));
+            secondTwin.updateLinkedBehavior(
+                    targetMidpointX + (perpendicularX * secondTwin.getFormationSide() * LASER_PAIR_HALF_SPAN),
+                    targetMidpointY + (perpendicularY * secondTwin.getFormationSide() * LASER_PAIR_HALF_SPAN));
+        }
+    }
+
+    private void breakLaserTwinLink(LaserTwinEnemy laserTwin) {
+        for (LaserLink laserLink : laserLinks) {
+            if (laserLink.isActive() && laserLink.references(laserTwin)) {
+                breakLaserLink(laserLink);
+                return;
+            }
+        }
+    }
+
+    private void breakLaserLink(LaserLink laserLink) {
+        LaserTwinEnemy firstTwin = laserLink.getFirstTwin();
+        LaserTwinEnemy secondTwin = laserLink.getSecondTwin();
+        laserLink.breakLink();
+        if (firstTwin != null) {
+            firstTwin.clearLinkedState();
+        }
+        if (secondTwin != null) {
+            secondTwin.clearLinkedState();
+        }
+    }
+
+    private void collectActiveLaserLinkRooms(Set<String> activeRooms) {
+        for (LaserLink laserLink : laserLinks) {
+            int minCol = toRoomCol(Math.min(laserLink.getStartX(), laserLink.getEndX()) - LASER_LINK_ROOM_PADDING);
+            int maxCol = toRoomCol(Math.max(laserLink.getStartX(), laserLink.getEndX()) + LASER_LINK_ROOM_PADDING);
+            int minRow = toRoomRow(Math.min(laserLink.getStartY(), laserLink.getEndY()) - LASER_LINK_ROOM_PADDING);
+            int maxRow = toRoomRow(Math.max(laserLink.getStartY(), laserLink.getEndY()) + LASER_LINK_ROOM_PADDING);
+
+            for (int col = minCol; col <= maxCol; col++) {
+                for (int row = minRow; row <= maxRow; row++) {
+                    if (col == roomCol && row == roomRow) {
+                        continue;
+                    }
+                    activeRooms.add(RoomRenderBucket.key(col, row));
+                }
+            }
+        }
+    }
+
+    private void addLaserLinkToBuckets(LaserLink laserLink) {
+        int minCol = toRoomCol(Math.min(laserLink.getStartX(), laserLink.getEndX()) - LASER_LINK_ROOM_PADDING);
+        int maxCol = toRoomCol(Math.max(laserLink.getStartX(), laserLink.getEndX()) + LASER_LINK_ROOM_PADDING);
+        int minRow = toRoomRow(Math.min(laserLink.getStartY(), laserLink.getEndY()) - LASER_LINK_ROOM_PADDING);
+        int maxRow = toRoomRow(Math.max(laserLink.getStartY(), laserLink.getEndY()) + LASER_LINK_ROOM_PADDING);
+
+        for (int col = minCol; col <= maxCol; col++) {
+            for (int row = minRow; row <= maxRow; row++) {
+                getOrCreateBucket(col, row).getLaserLinks().add(laserLink);
+            }
+        }
     }
 
     private boolean checkCollision(Pellet pellet, Enemy enemy) {
@@ -749,6 +1195,10 @@ public class Game extends Canvas {
         return (dx * dx) + (dy * dy) <= radius * radius;
     }
 
+    private boolean checkCollision(Player currentPlayer, MutantEnemy mutant) {
+        return checkCollision(currentPlayer, mutant.getX(), mutant.getY(), mutant.getAuraRadius());
+    }
+
     private boolean checkCollision(Player currentPlayer, EnemyBullet enemyBullet) {
         double radius = PLAYER_COLLISION_RADIUS + (enemyBullet.getSize() / 2.0);
         double startX = enemyBullet.getPreviousX();
@@ -774,6 +1224,48 @@ public class Game extends Canvas {
         return (dx * dx) + (dy * dy) <= radius * radius;
     }
 
+    private boolean checkCollision(Player currentPlayer, double centerX, double centerY, double collisionRadius) {
+        double combinedRadius = PLAYER_COLLISION_RADIUS + collisionRadius;
+        double combinedRadiusSquared = combinedRadius * combinedRadius;
+        return pointToSegmentDistanceSquared(centerX, centerY, currentPlayer.getPreviousX(), currentPlayer.getPreviousY(),
+                currentPlayer.getX(), currentPlayer.getY()) <= combinedRadiusSquared;
+    }
+
+    private boolean checkCollision(Player currentPlayer, LaserLink laserLink) {
+        double playerStartX = currentPlayer.getPreviousX();
+        double playerStartY = currentPlayer.getPreviousY();
+        double playerEndX = currentPlayer.getX();
+        double playerEndY = currentPlayer.getY();
+        double collisionRadiusSquared = LASER_LINK_COLLISION_RADIUS * LASER_LINK_COLLISION_RADIUS;
+
+        if (getSegmentDistanceSquared(playerStartX, playerStartY, playerEndX, playerEndY, laserLink.getStartX(),
+                laserLink.getStartY(), laserLink.getEndX(), laserLink.getEndY()) <= collisionRadiusSquared) {
+            return true;
+        }
+
+        if (getSegmentDistanceSquared(playerStartX, playerStartY, playerEndX, playerEndY, laserLink.getPreviousStartX(),
+                laserLink.getPreviousStartY(), laserLink.getPreviousEndX(), laserLink.getPreviousEndY()) <= collisionRadiusSquared) {
+            return true;
+        }
+
+        double midpointStartX = (laserLink.getPreviousStartX() + laserLink.getStartX()) / 2.0;
+        double midpointStartY = (laserLink.getPreviousStartY() + laserLink.getStartY()) / 2.0;
+        double midpointEndX = (laserLink.getPreviousEndX() + laserLink.getEndX()) / 2.0;
+        double midpointEndY = (laserLink.getPreviousEndY() + laserLink.getEndY()) / 2.0;
+        if (getSegmentDistanceSquared(playerStartX, playerStartY, playerEndX, playerEndY, midpointStartX,
+                midpointStartY, midpointEndX, midpointEndY) <= collisionRadiusSquared) {
+            return true;
+        }
+
+        if (getSegmentDistanceSquared(playerStartX, playerStartY, playerEndX, playerEndY, laserLink.getPreviousStartX(),
+                laserLink.getPreviousStartY(), laserLink.getStartX(), laserLink.getStartY()) <= collisionRadiusSquared) {
+            return true;
+        }
+
+        return getSegmentDistanceSquared(playerStartX, playerStartY, playerEndX, playerEndY, laserLink.getPreviousEndX(),
+                laserLink.getPreviousEndY(), laserLink.getEndX(), laserLink.getEndY()) <= collisionRadiusSquared;
+    }
+
     private boolean checkCollision(Pellet pellet, EnemyBullet enemyBullet) {
         double radius = (pellet.getSize() / 2.0) + (enemyBullet.getSize() / 2.0);
         double relativeStartX = pellet.getPreviousX() - enemyBullet.getPreviousX();
@@ -794,6 +1286,92 @@ public class Game extends Canvas {
         double closestX = relativeStartX + (relativeVelocityX * t);
         double closestY = relativeStartY + (relativeVelocityY * t);
         return (closestX * closestX) + (closestY * closestY) <= radius * radius;
+    }
+
+    private double getSegmentDistanceSquared(double firstStartX, double firstStartY, double firstEndX, double firstEndY,
+            double secondStartX, double secondStartY, double secondEndX, double secondEndY) {
+        if (segmentsIntersect(firstStartX, firstStartY, firstEndX, firstEndY, secondStartX, secondStartY, secondEndX,
+                secondEndY)) {
+            return 0.0;
+        }
+
+        double firstPointDistance = pointToSegmentDistanceSquared(firstStartX, firstStartY, secondStartX, secondStartY,
+                secondEndX, secondEndY);
+        double secondPointDistance = pointToSegmentDistanceSquared(firstEndX, firstEndY, secondStartX, secondStartY,
+                secondEndX, secondEndY);
+        double thirdPointDistance = pointToSegmentDistanceSquared(secondStartX, secondStartY, firstStartX, firstStartY,
+                firstEndX, firstEndY);
+        double fourthPointDistance = pointToSegmentDistanceSquared(secondEndX, secondEndY, firstStartX, firstStartY,
+                firstEndX, firstEndY);
+
+        return Math.min(Math.min(firstPointDistance, secondPointDistance),
+                Math.min(thirdPointDistance, fourthPointDistance));
+    }
+
+    private double pointToSegmentDistanceSquared(double pointX, double pointY, double segmentStartX, double segmentStartY,
+            double segmentEndX, double segmentEndY) {
+        double segmentX = segmentEndX - segmentStartX;
+        double segmentY = segmentEndY - segmentStartY;
+        double segmentLengthSquared = (segmentX * segmentX) + (segmentY * segmentY);
+
+        if (segmentLengthSquared <= ZERO_LENGTH_EPSILON) {
+            double dx = pointX - segmentStartX;
+            double dy = pointY - segmentStartY;
+            return (dx * dx) + (dy * dy);
+        }
+
+        double projection = ((pointX - segmentStartX) * segmentX) + ((pointY - segmentStartY) * segmentY);
+        double t = Math.max(0.0, Math.min(1.0, projection / segmentLengthSquared));
+        double closestX = segmentStartX + (segmentX * t);
+        double closestY = segmentStartY + (segmentY * t);
+        double dx = pointX - closestX;
+        double dy = pointY - closestY;
+        return (dx * dx) + (dy * dy);
+    }
+
+    private boolean segmentsIntersect(double firstStartX, double firstStartY, double firstEndX, double firstEndY,
+            double secondStartX, double secondStartY, double secondEndX, double secondEndY) {
+        double firstOrientation = crossProduct(firstStartX, firstStartY, firstEndX, firstEndY, secondStartX,
+                secondStartY);
+        double secondOrientation = crossProduct(firstStartX, firstStartY, firstEndX, firstEndY, secondEndX,
+                secondEndY);
+        double thirdOrientation = crossProduct(secondStartX, secondStartY, secondEndX, secondEndY, firstStartX,
+                firstStartY);
+        double fourthOrientation = crossProduct(secondStartX, secondStartY, secondEndX, secondEndY, firstEndX,
+                firstEndY);
+
+        boolean firstCrosses = (firstOrientation > ZERO_LENGTH_EPSILON && secondOrientation < -ZERO_LENGTH_EPSILON)
+                || (firstOrientation < -ZERO_LENGTH_EPSILON && secondOrientation > ZERO_LENGTH_EPSILON);
+        boolean secondCrosses = (thirdOrientation > ZERO_LENGTH_EPSILON && fourthOrientation < -ZERO_LENGTH_EPSILON)
+                || (thirdOrientation < -ZERO_LENGTH_EPSILON && fourthOrientation > ZERO_LENGTH_EPSILON);
+        if (firstCrosses && secondCrosses) {
+            return true;
+        }
+
+        return isPointOnSegment(secondStartX, secondStartY, firstStartX, firstStartY, firstEndX, firstEndY,
+                firstOrientation)
+                || isPointOnSegment(secondEndX, secondEndY, firstStartX, firstStartY, firstEndX, firstEndY,
+                        secondOrientation)
+                || isPointOnSegment(firstStartX, firstStartY, secondStartX, secondStartY, secondEndX, secondEndY,
+                        thirdOrientation)
+                || isPointOnSegment(firstEndX, firstEndY, secondStartX, secondStartY, secondEndX, secondEndY,
+                        fourthOrientation);
+    }
+
+    private double crossProduct(double startX, double startY, double endX, double endY, double pointX, double pointY) {
+        return ((endX - startX) * (pointY - startY)) - ((endY - startY) * (pointX - startX));
+    }
+
+    private boolean isPointOnSegment(double pointX, double pointY, double startX, double startY, double endX,
+            double endY, double orientation) {
+        if (Math.abs(orientation) > ZERO_LENGTH_EPSILON) {
+            return false;
+        }
+
+        return pointX >= Math.min(startX, endX) - ZERO_LENGTH_EPSILON
+                && pointX <= Math.max(startX, endX) + ZERO_LENGTH_EPSILON
+                && pointY >= Math.min(startY, endY) - ZERO_LENGTH_EPSILON
+                && pointY <= Math.max(startY, endY) + ZERO_LENGTH_EPSILON;
     }
 
     private boolean isPelletOutOfRange(Pellet pellet) {
@@ -873,6 +1451,22 @@ public class Game extends Canvas {
         return waveDirector.getEstimatedXpPerKill();
     }
 
+    private void grantWaveRecovery() {
+        int clearedWave = waveDirector.getWaveNumber();
+        if (clearedWave <= 0 || clearedWave % HEART_RECOVERY_WAVE_INTERVAL != 0) {
+            return;
+        }
+
+        int healedAmount = player.heal(1);
+        if (healedAmount <= 0) {
+            return;
+        }
+
+        floatingTexts.add(new FloatingText(player.getX(), player.getY() - 26, "+" + healedAmount, Color.RED,
+                HEAL_TEXT_LIFETIME_TICKS));
+        audioManager.playHeal();
+    }
+
     private int toRoomCol(double x) {
         return (int) Math.floor(x / roomWidth);
     }
@@ -885,6 +1479,8 @@ public class Game extends Canvas {
         pellets.clear();
         enemyBullets.clear();
         enemies.clear();
+        floatingTexts.clear();
+        laserLinks.clear();
         xps.clear();
         effectManager.reset();
         waveDirector.reset();
@@ -899,10 +1495,13 @@ public class Game extends Canvas {
         player = new Player(100, 100);
         hitCooldownTicksRemaining = 0;
         playerGraceTicksRemaining = GAME_START_GRACE_TICKS;
+        mutantExposureTicks = 0;
         upPressed = false;
         downPressed = false;
         leftPressed = false;
         rightPressed = false;
+        dashPressed = false;
+        dashRequested = false;
         shooting = false;
         window.setLocation(initialWindowLocation.x, initialWindowLocation.y);
     }
@@ -944,6 +1543,13 @@ public class Game extends Canvas {
 
     public void setRightPressed(boolean rightPressed) {
         this.rightPressed = rightPressed;
+    }
+
+    public void setDashPressed(boolean dashPressed) {
+        if (dashPressed && !this.dashPressed && gameState == GameState.PLAYING) {
+            dashRequested = true;
+        }
+        this.dashPressed = dashPressed;
     }
 
     public void setShooting(boolean shooting) {

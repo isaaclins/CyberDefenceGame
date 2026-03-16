@@ -22,8 +22,11 @@ public class EffectManager {
     private static final Color DAMAGE_FLASH_COLOR = new Color(255, 64, 64);
     private static final Color WAVE_PULSE_COLOR = new Color(64, 220, 255);
     private static final Color LEVEL_PULSE_COLOR = new Color(96, 255, 160);
+    private static final Color TELEPORT_WAVE_COLOR = new Color(138, 255, 248);
     private static final Color PROJECTILE_CLASH_CORE_COLOR = new Color(255, 248, 210);
     private static final Color PROJECTILE_CLASH_SPARK_COLOR = new Color(120, 228, 255);
+    private static final Color DASH_CORE_COLOR = new Color(220, 250, 255);
+    private static final Color DASH_STREAK_COLOR = new Color(96, 232, 255);
     private static final Stroke OVERLAY_STROKE = new BasicStroke(6f);
 
     private final List<Particle> particles = new ArrayList<>();
@@ -118,6 +121,54 @@ public class EffectManager {
     public void emitWaveStart(double x, double y, Random random) {
         wavePulseTicksRemaining = WAVE_PULSE_TICKS;
         emitBurst(12 + random.nextInt(4), x, y, 1.0, 2.2, 14, 22, 2.8, 4.0, 0.92, WAVE_PULSE_COLOR, 2, random);
+    }
+
+    public void emitTeleportWave(double x, double y, Random random) {
+        int count = 16 + random.nextInt(5);
+        double baseAngle = random.nextDouble() * Math.PI * 2;
+        for (int i = 0; i < count; i++) {
+            double angle = baseAngle + ((Math.PI * 2.0 * i) / count);
+            double spawnRadius = 4.0 + (random.nextDouble() * 2.0);
+            double speed = 1.0 + (random.nextDouble() * 0.45);
+            double dx = Math.cos(angle) * speed;
+            double dy = Math.sin(angle) * speed;
+            int lifetime = 12 + random.nextInt(4);
+            double size = 2.0 + (random.nextDouble() * 1.4);
+            addParticle(new Particle(x + (Math.cos(angle) * spawnRadius), y + (Math.sin(angle) * spawnRadius), dx, dy,
+                    lifetime, size, 0.93, TELEPORT_WAVE_COLOR, 2));
+        }
+    }
+
+    public void emitDash(double x, double y, double directionX, double directionY, Random random) {
+        double directionLengthSquared = (directionX * directionX) + (directionY * directionY);
+        if (directionLengthSquared <= 0.0001) {
+            return;
+        }
+
+        double directionLength = Math.sqrt(directionLengthSquared);
+        double normalizedDirectionX = directionX / directionLength;
+        double normalizedDirectionY = directionY / directionLength;
+        double trailDirectionX = -normalizedDirectionX;
+        double trailDirectionY = -normalizedDirectionY;
+        double perpendicularX = -normalizedDirectionY;
+        double perpendicularY = normalizedDirectionX;
+
+        for (int i = 0; i < 12; i++) {
+            double spread = (random.nextDouble() - 0.5) * 16.0;
+            double speed = 1.8 + (random.nextDouble() * 2.4);
+            double lateralDrift = (random.nextDouble() - 0.5) * 0.9;
+            double spawnX = x + (normalizedDirectionX * (2.0 + random.nextDouble() * 6.0))
+                    + (perpendicularX * spread);
+            double spawnY = y + (normalizedDirectionY * (2.0 + random.nextDouble() * 6.0))
+                    + (perpendicularY * spread);
+            double dx = (trailDirectionX * speed) + (perpendicularX * lateralDrift);
+            double dy = (trailDirectionY * speed) + (perpendicularY * lateralDrift);
+            Color color = i < 4 ? DASH_CORE_COLOR : DASH_STREAK_COLOR;
+            addParticle(new Particle(spawnX, spawnY, dx, dy, 10 + random.nextInt(6), 2.4 + random.nextDouble() * 2.1,
+                    0.84, color, 2, false));
+        }
+
+        triggerScreenShake(2.8, 5);
     }
 
     public void triggerDamageFlash() {

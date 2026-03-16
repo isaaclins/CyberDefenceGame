@@ -40,10 +40,20 @@ assert_absent "\\.stream\\(" src/main/Game.java src/utils/Renderer.java src/util
 assert_absent "new Thread\\(" src/entity/Gun.java src/main/Game.java
 assert_absent "collectActiveRooms\\(activeRooms, pellets\\)" src/main/Game.java
 assert_present "VK_R" src/utils/InputHandler.java
+assert_present "VK_SHIFT|setDashPressed" src/utils/InputHandler.java src/main/Game.java
 assert_present "playReloadProgress" src/main/Game.java src/utils/AudioManager.java
+assert_present "tryDash|tickDashCooldown|getDashChargeRatio" src/entity/Player.java
+assert_present "LaserTwinEnemy" src/entity/LaserTwinEnemy.java src/main/Game.java src/utils/WaveDirector.java
+assert_present "MutantEnemy|getAuraRadius|getExposureThresholdTicks" src/entity/MutantEnemy.java src/main/Game.java src/utils/WaveDirector.java
+assert_present "WarperEnemy|emitTeleportWave|swapPlayerWithWarper" src/entity/WarperEnemy.java src/utils/EffectManager.java src/main/Game.java src/utils/WaveDirector.java
+assert_present "emitDash" src/utils/EffectManager.java src/main/Game.java
+assert_present "LaserLink|getLaserLinks" src/entity/LaserLink.java src/utils/RoomRenderBucket.java src/utils/Renderer.java src/utils/WindowRenderer.java
+assert_present "handleLaserLinkPlayerCollisions|handleMutantAuraPlayerCollisions|reconcileLaserTwinLinks|updateLinkedLaserTwinBehavior" src/main/Game.java
+assert_present "playDash|playDashReady|playLaserLink|playMutantRadiation|playMutantRadiationAura" src/utils/AudioManager.java src/main/Game.java
+assert_present "drawDashReadyBar" src/utils/Renderer.java
 assert_present "shootFromCenter" src/entity/Player.java src/main/Game.java
 assert_present "aimGunDirectlyAt" src/entity/Player.java src/main/Game.java
-assert_present "getPreviousX|getPreviousY" src/entity/Pellet.java src/main/Game.java
+assert_present "getPreviousX|getPreviousY" src/entity/Pellet.java src/entity/Player.java src/main/Game.java
 
 if [ "$fail" -ne 0 ]; then
     exit 1

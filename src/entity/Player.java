@@ -3,7 +3,12 @@ package src.entity;
 import src.entity.Gun;
 
 public class Player {
+    private static final double DIRECTION_EPSILON = 0.0001;
+    private static final double DASH_SPEED = 38.0;
+    private static final int DASH_COOLDOWN_TICKS = 90;
+
     private double x, y;
+    private double previousX, previousY;
     private double velocityX = 0, velocityY = 0;
     private double acceleration = 0.5;
     private final double friction = 0.90;
@@ -21,10 +26,16 @@ public class Player {
     private LevelingSystem levelingSystem;
     private final double pickupRadius = 65.0;
     private final double attractionRadius = 190.0;
+    private double lastMoveDirectionX;
+    private double lastMoveDirectionY;
+    private boolean hasMoveDirection;
+    private int dashCooldownTicksRemaining;
 
     public Player(double startX, double startY) {
         this.x = startX;
         this.y = startY;
+        this.previousX = startX;
+        this.previousY = startY;
         this.gunAngle = 0;
         this.targetGunAngle = 0;
         this.gun = null;
@@ -35,6 +46,8 @@ public class Player {
     }
 
     public void move(boolean upPressed, boolean downPressed, boolean leftPressed, boolean rightPressed) {
+        updateLastMoveDirection(upPressed, downPressed, leftPressed, rightPressed);
+
         if (upPressed)
             velocityY -= acceleration;
         if (downPressed)
@@ -44,12 +57,35 @@ public class Player {
         if (rightPressed)
             velocityX += acceleration;
 
+        previousX = x;
+        previousY = y;
         x += velocityX;
         y += velocityY;
 
         velocityX *= friction;
         velocityY *= friction;
         updateGunPosition();
+    }
+
+    public boolean tryDash(boolean upPressed, boolean downPressed, boolean leftPressed, boolean rightPressed) {
+        updateLastMoveDirection(upPressed, downPressed, leftPressed, rightPressed);
+        if (dashCooldownTicksRemaining > 0 || !hasMoveDirection) {
+            return false;
+        }
+
+        velocityX += lastMoveDirectionX * DASH_SPEED;
+        velocityY += lastMoveDirectionY * DASH_SPEED;
+        dashCooldownTicksRemaining = DASH_COOLDOWN_TICKS;
+        return true;
+    }
+
+    public boolean tickDashCooldown() {
+        if (dashCooldownTicksRemaining <= 0) {
+            return false;
+        }
+
+        dashCooldownTicksRemaining--;
+        return dashCooldownTicksRemaining == 0;
     }
 
     public java.util.ArrayList<Pellet> shoot() {
@@ -108,6 +144,16 @@ public class Player {
         }
     }
 
+    public int heal(int amount) {
+        if (amount <= 0 || health >= maxHealth) {
+            return 0;
+        }
+
+        int healedAmount = Math.min(amount, maxHealth - health);
+        health += healedAmount;
+        return healedAmount;
+    }
+
     public void applyKnockback(double knockbackX, double knockbackY) {
         this.velocityX += knockbackX;
         this.velocityY += knockbackY;
@@ -149,6 +195,14 @@ public class Player {
         return y;
     }
 
+    public double getPreviousX() {
+        return previousX;
+    }
+
+    public double getPreviousY() {
+        return previousY;
+    }
+
     public double getPickupRadius() {
         return pickupRadius;
     }
@@ -157,13 +211,52 @@ public class Player {
         return attractionRadius;
     }
 
+    public int getDashCooldownTicksRemaining() {
+        return dashCooldownTicksRemaining;
+    }
+
+    public int getDashCooldownTicks() {
+        return DASH_COOLDOWN_TICKS;
+    }
+
+    public double getDashChargeRatio() {
+        if (DASH_COOLDOWN_TICKS <= 0) {
+            return 1.0;
+        }
+        return 1.0 - (dashCooldownTicksRemaining / (double) DASH_COOLDOWN_TICKS);
+    }
+
+    public boolean isDashReady() {
+        return dashCooldownTicksRemaining <= 0 && hasMoveDirection;
+    }
+
+    public double getLastMoveDirectionX() {
+        return lastMoveDirectionX;
+    }
+
+    public double getLastMoveDirectionY() {
+        return lastMoveDirectionY;
+    }
+
     public void setX(double x) {
         this.x = x;
+        previousX = x;
         updateGunPosition();
     }
 
     public void setY(double y) {
         this.y = y;
+        previousY = y;
+        updateGunPosition();
+    }
+
+    public void teleportTo(double x, double y) {
+        this.x = x;
+        this.y = y;
+        this.previousX = x;
+        this.previousY = y;
+        this.velocityX = 0;
+        this.velocityY = 0;
         updateGunPosition();
     }
 
@@ -192,5 +285,33 @@ public class Player {
             return;
         }
         acceleration = Math.max(0.1, acceleration * factor);
+    }
+
+    private void updateLastMoveDirection(boolean upPressed, boolean downPressed, boolean leftPressed,
+            boolean rightPressed) {
+        double inputX = 0.0;
+        double inputY = 0.0;
+        if (leftPressed) {
+            inputX -= 1.0;
+        }
+        if (rightPressed) {
+            inputX += 1.0;
+        }
+        if (upPressed) {
+            inputY -= 1.0;
+        }
+        if (downPressed) {
+            inputY += 1.0;
+        }
+
+        double magnitudeSquared = (inputX * inputX) + (inputY * inputY);
+        if (magnitudeSquared <= DIRECTION_EPSILON) {
+            return;
+        }
+
+        double magnitude = Math.sqrt(magnitudeSquared);
+        lastMoveDirectionX = inputX / magnitude;
+        lastMoveDirectionY = inputY / magnitude;
+        hasMoveDirection = true;
     }
 }

@@ -71,6 +71,7 @@ make build-linux
 ## Controls
 
 - **Movement:** `W`, `A`, `S`, `D`
+- **Dash:** `Shift`
 - **Shoot:** `Spacebar`
 - **Reload:** `R`
 - **Pause:** `Escape` or `P`

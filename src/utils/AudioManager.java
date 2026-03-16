@@ -92,6 +92,37 @@ public class AudioManager {
         play("waveStart", 0);
     }
 
+    public void playHeal() {
+        play("heal", 80);
+    }
+
+    public void playDash() {
+        play("dash", 75);
+    }
+
+    public void playDashReady() {
+        play("dashReady", 120);
+    }
+
+    public void playLaserLink() {
+        play("laserLink", 30);
+    }
+
+    public void playMutantRadiation() {
+        play("mutantRadiation", 70);
+    }
+
+    public void playMutantRadiationAura(double intensity) {
+        long minIntervalMillis = 230;
+        if (intensity >= 0.72) {
+            minIntervalMillis = 85;
+        } else if (intensity >= 0.42) {
+            minIntervalMillis = 145;
+        }
+
+        play("mutantRadiationAura", minIntervalMillis);
+    }
+
     public void close() {
         for (ClipPool pool : clipPools.values()) {
             pool.close();
@@ -117,7 +148,13 @@ public class AudioManager {
             register("enemyDefeat", buildSignal(120, 240, 80, 0.26, 0.30, 0.08), 3);
             register("xpPickup", buildSignal(90, 700, 980, 0.18, 0.01, 0.02), 3);
             register("levelUp", buildMelody(new double[] { 440, 554, 660, 880 }, 70, 0.20), 2);
+            register("heal", buildMelody(new double[] { 660, 784, 988 }, 55, 0.18), 2);
             register("waveStart", buildMelody(new double[] { 220, 330, 440 }, 90, 0.18), 2);
+            register("dash", buildSignal(120, 1280, 170, 0.24, 0.52, 0.03), 3);
+            register("dashReady", buildMelody(new double[] { 660, 880 }, 35, 0.10), 2);
+            register("laserLink", buildSignal(140, 1640, 420, 0.24, 0.03, 0.30), 3);
+            register("mutantRadiation", buildSignal(150, 2100, 240, 0.17, 0.20, 0.24), 3);
+            register("mutantRadiationAura", buildSignal(24, 3600, 900, 0.10, 0.56, 0.22), 4);
             register("uiClick", buildSignal(50, 920, 700, 0.12, 0.01, 0.02), 2);
         } catch (IllegalArgumentException | LineUnavailableException e) {
             enabled = false;

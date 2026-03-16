@@ -5,12 +5,16 @@ import src.entity.EnemyBullet;
 import src.entity.Pellet;
 import src.entity.Player;
 import src.entity.XP;
+import src.entity.LaserLink;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.geom.Rectangle2D;
+import java.awt.geom.RoundRectangle2D;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 
 import src.entity.Gun;
 import src.entity.Particle;
@@ -24,6 +28,10 @@ public class Renderer {
     private static final Color XP_BAR_COLOR = new Color(64, 220, 120);
     private static final Color AMMO_COLOR = new Color(255, 255, 255, 150);
     private static final Color AMMO_RELOAD_OUTLINE_COLOR = new Color(255, 255, 255, 55);
+    private static final Color DASH_BAR_BACKGROUND = new Color(24, 32, 40, 210);
+    private static final Color DASH_BAR_OUTLINE = new Color(196, 242, 255, 190);
+    private static final Color DASH_BAR_FILL = new Color(92, 224, 255, 220);
+    private static final Color DASH_BAR_READY_FILL = new Color(214, 249, 255, 245);
 
     private final int roomWidth;
     private final int roomHeight;
@@ -35,11 +43,39 @@ public class Renderer {
 
     public void render(Graphics2D g2d, Player player, Map<String, RoomRenderBucket> roomBuckets, int roomCol,
             int roomRow) {
-        renderRoomAndContents(g2d, roomBuckets, roomCol, roomRow);
-        renderRoomAndContents(g2d, roomBuckets, roomCol - 1, roomRow);
-        renderRoomAndContents(g2d, roomBuckets, roomCol + 1, roomRow);
-        renderRoomAndContents(g2d, roomBuckets, roomCol, roomRow - 1);
-        renderRoomAndContents(g2d, roomBuckets, roomCol, roomRow + 1);
+        renderRoom(g2d, roomCol, roomRow);
+        renderRoom(g2d, roomCol - 1, roomRow);
+        renderRoom(g2d, roomCol + 1, roomRow);
+        renderRoom(g2d, roomCol, roomRow - 1);
+        renderRoom(g2d, roomCol, roomRow + 1);
+
+        Set<LaserLink> visibleLaserLinks = new LinkedHashSet<>();
+        collectLaserLinks(visibleLaserLinks, roomBuckets.get(RoomRenderBucket.key(roomCol, roomRow)));
+        collectLaserLinks(visibleLaserLinks, roomBuckets.get(RoomRenderBucket.key(roomCol - 1, roomRow)));
+        collectLaserLinks(visibleLaserLinks, roomBuckets.get(RoomRenderBucket.key(roomCol + 1, roomRow)));
+        collectLaserLinks(visibleLaserLinks, roomBuckets.get(RoomRenderBucket.key(roomCol, roomRow - 1)));
+        collectLaserLinks(visibleLaserLinks, roomBuckets.get(RoomRenderBucket.key(roomCol, roomRow + 1)));
+
+        for (LaserLink laserLink : visibleLaserLinks) {
+            laserLink.render(g2d);
+        }
+
+        Set<Enemy> visibleEnemies = new LinkedHashSet<>();
+        collectEnemies(visibleEnemies, roomBuckets.get(RoomRenderBucket.key(roomCol, roomRow)));
+        collectEnemies(visibleEnemies, roomBuckets.get(RoomRenderBucket.key(roomCol - 1, roomRow)));
+        collectEnemies(visibleEnemies, roomBuckets.get(RoomRenderBucket.key(roomCol + 1, roomRow)));
+        collectEnemies(visibleEnemies, roomBuckets.get(RoomRenderBucket.key(roomCol, roomRow - 1)));
+        collectEnemies(visibleEnemies, roomBuckets.get(RoomRenderBucket.key(roomCol, roomRow + 1)));
+
+        for (Enemy enemy : visibleEnemies) {
+            enemy.render(g2d);
+        }
+
+        renderRoomEffects(g2d, roomBuckets.get(RoomRenderBucket.key(roomCol, roomRow)));
+        renderRoomEffects(g2d, roomBuckets.get(RoomRenderBucket.key(roomCol - 1, roomRow)));
+        renderRoomEffects(g2d, roomBuckets.get(RoomRenderBucket.key(roomCol + 1, roomRow)));
+        renderRoomEffects(g2d, roomBuckets.get(RoomRenderBucket.key(roomCol, roomRow - 1)));
+        renderRoomEffects(g2d, roomBuckets.get(RoomRenderBucket.key(roomCol, roomRow + 1)));
 
         Rectangle2D playerShape = new Rectangle2D.Double(player.getX() - 10, player.getY() - 10, 20, 20);
         GlowRenderer.drawGlow(g2d, playerShape, Color.RED, 5);
@@ -85,6 +121,7 @@ public class Renderer {
         g2d.fillRect((int) player.getX() - 15, (int) player.getY() + 15, (int) (30 * xpPercentage), 5);
 
         drawHealth(g2d, player);
+        drawDashReadyBar(g2d, player);
         drawAmmo(g2d, player);
     }
 
@@ -101,7 +138,7 @@ public class Renderer {
         double playerScreenY = player.getY();
 
         int startX = (int) (playerScreenX - totalWidth / 2);
-        int startY = (int) (playerScreenY - 30 - circleSize);
+        int startY = (int) (playerScreenY - 40 - circleSize);
 
         for (int i = 0; i < maxHealth; i++) {
             g2d.setColor(Color.RED);
@@ -111,6 +148,39 @@ public class Renderer {
                 g2d.drawOval(startX + i * (circleSize + spacing), startY, circleSize, circleSize);
             }
         }
+    }
+
+    private void drawDashReadyBar(Graphics2D g2d, Player player) {
+        if (player == null) {
+            return;
+        }
+
+        int healthCircleSize = 10;
+        int healthSpacing = 5;
+        int totalWidth = (healthCircleSize + healthSpacing) * player.getMaxHealth() - healthSpacing;
+        int barWidth = Math.max(36, totalWidth);
+        int barHeight = 6;
+        int startX = (int) Math.round(player.getX() - (barWidth / 2.0));
+        int startY = (int) Math.round(player.getY() - 34);
+        RoundRectangle2D.Double barShape = new RoundRectangle2D.Double(startX, startY, barWidth, barHeight, barHeight,
+                barHeight);
+
+        g2d.setColor(DASH_BAR_BACKGROUND);
+        g2d.fill(barShape);
+
+        double chargeRatio = Math.max(0.0, Math.min(1.0, player.getDashChargeRatio()));
+        int innerWidth = (int) Math.round((barWidth - 2) * chargeRatio);
+        if (innerWidth > 0) {
+            Color fillColor = player.isDashReady() ? DASH_BAR_READY_FILL : DASH_BAR_FILL;
+            if (player.isDashReady()) {
+                GlowRenderer.drawGlow(g2d, barShape, fillColor, 3);
+            }
+            g2d.setColor(fillColor);
+            g2d.fillRoundRect(startX + 1, startY + 1, innerWidth, Math.max(1, barHeight - 2), barHeight, barHeight);
+        }
+
+        g2d.setColor(DASH_BAR_OUTLINE);
+        g2d.draw(barShape);
     }
 
     private void drawAmmo(Graphics2D g2d, Player player) {
@@ -147,20 +217,27 @@ public class Renderer {
         }
     }
 
-    private void renderRoomAndContents(Graphics2D g2d, Map<String, RoomRenderBucket> roomBuckets, int col, int row) {
-        renderRoom(g2d, col, row);
-        RoomRenderBucket bucket = roomBuckets.get(RoomRenderBucket.key(col, row));
+    private void collectLaserLinks(Set<LaserLink> visibleLaserLinks, RoomRenderBucket bucket) {
         if (bucket == null) {
             return;
         }
 
-        renderBucket(g2d, bucket);
+        visibleLaserLinks.addAll(bucket.getLaserLinks());
     }
 
-    private void renderBucket(Graphics2D g2d, RoomRenderBucket bucket) {
-        for (Enemy enemy : bucket.getEnemies()) {
-            enemy.render(g2d);
+    private void collectEnemies(Set<Enemy> visibleEnemies, RoomRenderBucket bucket) {
+        if (bucket == null) {
+            return;
         }
+
+        visibleEnemies.addAll(bucket.getEnemies());
+    }
+
+    private void renderRoomEffects(Graphics2D g2d, RoomRenderBucket bucket) {
+        if (bucket == null) {
+            return;
+        }
+
         for (EnemyBullet enemyBullet : bucket.getEnemyBullets()) {
             enemyBullet.render(g2d);
         }
