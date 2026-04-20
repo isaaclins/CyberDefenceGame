@@ -68,6 +68,15 @@ make build-windows
 make build-linux
 ```
 
+### GitHub Releases (CI)
+
+GitHub Actions builds **Linux (.deb)**, **Windows (.exe)**, and **macOS (.dmg)** installers and uploads them in two cases:
+
+1. **Published GitHub Release** — When you publish a release, installers are attached to that release’s tag. Use a tag like `v1.2.3`; the package version strips the leading `v` for `jpackage`.
+2. **Pushes to the `release` branch** — Each push refreshes the rolling pre-release tagged **`rolling-release`**: the workflow moves that tag to the latest commit, clears previous assets on that pre-release, and uploads new installers (version `1.0.<run number>`). Download them from the repository’s **Releases** page.
+
+Unsigned macOS builds may require **Right-click → Open** the first time you run the app.
+
 ## Controls
 
 - **Movement:** `W`, `A`, `S`, `D`

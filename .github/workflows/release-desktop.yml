@@ -1,0 +1,202 @@
+name: Release desktop installers
+
+on:
+  release:
+    types: [published]
+  push:
+    branches: [release]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: desktop-installers-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'push' }}
+
+jobs:
+  prepare:
+    name: Prepare rolling release (branch only)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git for tag push
+        if: github.event_name == 'push'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Update rolling-release tag, GitHub pre-release, clear old assets
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git tag -f rolling-release "${GITHUB_SHA}"
+          git push origin "refs/tags/rolling-release" --force
+
+          if gh release view rolling-release >/dev/null 2>&1; then
+            gh release edit rolling-release --prerelease --latest=false
+          else
+            gh release create rolling-release \
+              --title "Release branch (rolling builds)" \
+              --notes "Installers built automatically from pushes to the \`release\` branch. For versioned releases, publish a GitHub Release from a tag instead." \
+              --prerelease
+          fi
+
+          while read -r id; do
+            [ -z "$id" ] && continue
+            gh api "repos/${GITHUB_REPOSITORY}/releases/assets/${id}" -X DELETE
+          done < <(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/rolling-release" --jq '.assets[].id')
+
+      - name: No-op for published release events
+        if: github.event_name == 'release'
+        run: echo "Published release workflow; rolling tag step skipped."
+
+  build-linux:
+    name: Linux (.deb)
+    needs: [prepare]
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set version and upload tag
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            TAG="${{ github.event.release.tag_name }}"
+            echo "APP_VERSION=${TAG#v}" >> "$GITHUB_ENV"
+            echo "UPLOAD_TAG=$TAG" >> "$GITHUB_ENV"
+          else
+            echo "APP_VERSION=1.0.${{ github.run_number }}" >> "$GITHUB_ENV"
+            echo "UPLOAD_TAG=rolling-release" >> "$GITHUB_ENV"
+          fi
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install packaging tools for jpackage
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fakeroot binutils
+
+      - name: Build Linux installer
+        run: make build-linux
+
+      - name: Upload to GitHub Release
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=(dist/packages/*.deb)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No .deb produced"; ls -la dist/packages 2>/dev/null || true
+            exit 1
+          fi
+          gh release upload "${UPLOAD_TAG}" dist/packages/*.deb --clobber
+
+  build-windows:
+    name: Windows (.exe)
+    needs: [prepare]
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set version and upload tag
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            TAG="${{ github.event.release.tag_name }}"
+            echo "APP_VERSION=${TAG#v}" >> "$GITHUB_ENV"
+            echo "UPLOAD_TAG=$TAG" >> "$GITHUB_ENV"
+          else
+            echo "APP_VERSION=1.0.${{ github.run_number }}" >> "$GITHUB_ENV"
+            echo "UPLOAD_TAG=rolling-release" >> "$GITHUB_ENV"
+          fi
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install GNU Make
+        shell: pwsh
+        run: choco install make -y --no-progress
+
+      - name: Set WIX for jpackage
+        shell: pwsh
+        run: |
+          $candidate = $env:WIX
+          if (-not ($candidate -and (Test-Path $candidate))) {
+            $root = ${env:ProgramFiles(x86)}
+            $wixDir = Get-ChildItem -Path "$root\WiX Toolset v*" -Directory -ErrorAction SilentlyContinue | Select-Object -First 1
+            if (-not $wixDir) {
+              throw "WiX Toolset not found under Program Files (x86). Install WiX 3.x on the runner or set WIX."
+            }
+            $candidate = $wixDir.FullName
+          }
+          "WIX=$candidate" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Build Windows installer
+        run: |
+          export PATH="/c/ProgramData/chocolatey/bin:$PATH"
+          command -v make
+          make build-windows
+
+      - name: Upload to GitHub Release
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=(dist/packages/*.exe)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No .exe produced"; ls -la dist/packages 2>/dev/null || true
+            exit 1
+          fi
+          gh release upload "${UPLOAD_TAG}" dist/packages/*.exe --clobber
+
+  build-macos:
+    name: macOS (.dmg)
+    needs: [prepare]
+    runs-on: macos-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set version and upload tag
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            TAG="${{ github.event.release.tag_name }}"
+            echo "APP_VERSION=${TAG#v}" >> "$GITHUB_ENV"
+            echo "UPLOAD_TAG=$TAG" >> "$GITHUB_ENV"
+          else
+            echo "APP_VERSION=1.0.${{ github.run_number }}" >> "$GITHUB_ENV"
+            echo "UPLOAD_TAG=rolling-release" >> "$GITHUB_ENV"
+          fi
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Build macOS installer
+        run: make build-mac
+
+      - name: Upload to GitHub Release
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=(dist/packages/*.dmg)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No .dmg produced"; ls -la dist/packages 2>/dev/null || true
+            exit 1
+          fi
+          gh release upload "${UPLOAD_TAG}" dist/packages/*.dmg --clobber
