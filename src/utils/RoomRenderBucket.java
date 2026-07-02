@@ -8,6 +8,7 @@ import src.entity.EnemyBullet;
 import src.entity.LaserLink;
 import src.entity.Particle;
 import src.entity.Pellet;
+import src.entity.PowerUp;
 import src.entity.XP;
 
 public class RoomRenderBucket {
@@ -18,6 +19,7 @@ public class RoomRenderBucket {
     private final List<LaserLink> laserLinks = new ArrayList<>();
     private final List<Pellet> pellets = new ArrayList<>();
     private final List<XP> xps = new ArrayList<>();
+    private final List<PowerUp> powerUps = new ArrayList<>();
     private final List<Particle> particles = new ArrayList<>();
 
     public RoomRenderBucket(int roomCol, int roomRow) {
@@ -55,6 +57,10 @@ public class RoomRenderBucket {
 
     public List<XP> getXps() {
         return xps;
+    }
+
+    public List<PowerUp> getPowerUps() {
+        return powerUps;
     }
 
     public List<Particle> getParticles() {

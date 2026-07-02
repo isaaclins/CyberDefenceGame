@@ -4,38 +4,34 @@ import src.entity.Player;
 import src.main.Game;
 import src.upgrades.Upgrade;
 
-import java.awt.*;
+import java.awt.Color;
+import java.awt.FontMetrics;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Rectangle;
 import java.util.List;
 
 public class UpgradeScreen {
-    private static final Font TITLE_FONT = new Font("Arial", Font.BOLD, 34);
-    private static final Font SUBTITLE_FONT = new Font("Arial", Font.PLAIN, 14);
-    private static final Font UPGRADE_TITLE_FONT = new Font("Arial", Font.BOLD, 18);
-    private static final Font UPGRADE_BODY_FONT = new Font("Arial", Font.PLAIN, 13);
-    private static final Color OVERLAY_COLOR = new Color(0, 0, 0, 180);
-    private static final Color BOX_COLOR = new Color(70, 70, 70, 240);
-    private static final Color BOX_BORDER_COLOR = Color.WHITE;
-
-    private List<Upgrade> currentUpgrades;
-    private Rectangle[] upgradeBounds;
-    private int titleY;
-    private int subtitleY;
+    private volatile List<Upgrade> currentUpgrades;
+    private volatile Rectangle[] upgradeBounds;
+    private volatile int selectedIndex;
+    private volatile long shownAtNanos;
 
     public void presentUpgrades(Game game) {
         this.currentUpgrades = game.getUpgradeManager().getRandomUpgrades(3);
+        this.selectedIndex = 0;
+        this.shownAtNanos = System.nanoTime();
+
         int screenWidth = game.getWidth();
         int screenHeight = game.getHeight();
         int count = Math.max(1, currentUpgrades.size());
-        int boxWidth = Math.min(420, screenWidth - 64);
-        int spacing = Math.max(10, Math.min(16, screenHeight / 28));
-        int topArea = 78;
-        int bottomPadding = 18;
-        int availableHeight = Math.max(120, screenHeight - topArea - bottomPadding - ((count - 1) * spacing));
-        int boxHeight = Math.max(50, Math.min(94, availableHeight / count));
+        int boxWidth = Math.min(400, screenWidth - 48);
+        int spacing = 12;
+        int topArea = (int) (screenHeight * 0.24);
+        int bottomPadding = 40;
+        int available = Math.max(120, screenHeight - topArea - bottomPadding - ((count - 1) * spacing));
+        int boxHeight = Math.max(56, Math.min(92, available / count));
         int startY = topArea;
-
-        titleY = 36;
-        subtitleY = 54;
 
         upgradeBounds = new Rectangle[currentUpgrades.size()];
         for (int i = 0; i < currentUpgrades.size(); i++) {
@@ -46,55 +42,120 @@ public class UpgradeScreen {
     }
 
     public void render(Graphics g, int width, int height) {
-        if (currentUpgrades == null)
+        List<Upgrade> upgrades = currentUpgrades;
+        Rectangle[] bounds = upgradeBounds;
+        int focusedIndex = selectedIndex;
+        if (upgrades == null || bounds == null) {
             return;
+        }
+        if (upgrades.isEmpty() || bounds.length < upgrades.size()) {
+            return;
+        }
 
-        g.setColor(OVERLAY_COLOR);
-        g.fillRect(0, 0, width, height);
+        Graphics2D g2d = (Graphics2D) g;
+        UiTheme.enableAntialias(g2d);
 
-        g.setFont(TITLE_FONT);
-        g.setColor(Color.WHITE);
-        String title = "LEVEL UP!";
-        FontMetrics fm = g.getFontMetrics();
-        g.drawString(title, (width - fm.stringWidth(title)) / 2, titleY);
+        double elapsed = elapsedSeconds();
+        UiTheme.drawScrim(g2d, width, height, elapsed / 0.25);
 
-        g.setFont(SUBTITLE_FONT);
-        String subtitle = "Choose one upgrade";
-        fm = g.getFontMetrics();
-        g.drawString(subtitle, (width - fm.stringWidth(subtitle)) / 2, subtitleY);
+        int centerX = width / 2;
+        g2d.setFont(UiTheme.HEADING);
+        g2d.setColor(UiTheme.ACCENT);
+        UiTheme.drawCenteredString(g2d, "LEVEL UP", centerX, (int) (height * 0.13));
 
-        for (int i = 0; i < currentUpgrades.size(); i++) {
-            Rectangle box = upgradeBounds[i];
-            Upgrade upgrade = currentUpgrades.get(i);
+        g2d.setFont(UiTheme.BODY);
+        g2d.setColor(UiTheme.MUTED);
+        UiTheme.drawCenteredString(g2d, "Choose an upgrade", centerX, (int) (height * 0.13) + 22);
 
-            g.setColor(BOX_COLOR);
-            g.fillRoundRect(box.x, box.y, box.width, box.height, 18, 18);
-            g.setColor(BOX_BORDER_COLOR);
-            g.drawRoundRect(box.x, box.y, box.width, box.height, 18, 18);
+        for (int i = 0; i < upgrades.size(); i++) {
+            renderCard(g2d, upgrades, bounds, focusedIndex, i, elapsed);
+        }
 
-            g.setFont(UPGRADE_TITLE_FONT);
-            fm = g.getFontMetrics();
-            int titleY = box.y + 12 + fm.getAscent();
-            g.drawString(upgrade.getName(), box.x + (box.width - fm.stringWidth(upgrade.getName())) / 2, titleY);
+        g2d.setFont(UiTheme.HINT);
+        g2d.setColor(UiTheme.MUTED);
+        UiTheme.drawCenteredString(g2d, "1-3 / arrows  select      ENTER  confirm", centerX, height - 16);
+    }
 
-            g.setFont(UPGRADE_BODY_FONT);
-            drawCenteredWrappedText(g, upgrade.getDescription(), box.x + 20, box.y + 32, box.width - 40, box.height - 18);
+    private void renderCard(Graphics2D g2d, List<Upgrade> upgrades, Rectangle[] bounds, int focusedIndex, int index,
+            double elapsed) {
+        Rectangle box = bounds[index];
+        Upgrade upgrade = upgrades.get(index);
+
+        // Staggered slide-and-fade entrance per card.
+        double delay = 0.06 * index;
+        double appear = UiTheme.easeOut((elapsed - delay) / 0.32);
+        int offsetY = (int) ((1.0 - appear) * 18);
+        int drawY = box.y + offsetY;
+
+        double focus = index == focusedIndex ? 0.85 + 0.15 * Math.sin(elapsed * 4.0) : 0.0;
+        UiTheme.drawOptionBox(g2d, box.x, drawY, box.width, box.height, focus);
+
+        // Number badge.
+        g2d.setFont(UiTheme.SMALL);
+        g2d.setColor(UiTheme.mix(UiTheme.MUTED, UiTheme.ACCENT, focus));
+        g2d.drawString("[" + (index + 1) + "]", box.x + 16, drawY + 20);
+
+        g2d.setFont(UiTheme.LABEL);
+        g2d.setColor(UiTheme.mix(UiTheme.TEXT, UiTheme.ACCENT, focus));
+        FontMetrics fm = g2d.getFontMetrics();
+        g2d.drawString(upgrade.getName(), box.x + 42, drawY + 14 + fm.getAscent() - 4);
+
+        g2d.setFont(UiTheme.BODY);
+        g2d.setColor(UiTheme.MUTED);
+        drawWrappedText(g2d, upgrade.getDescription(), box.x + 42, drawY + 34, box.width - 58, drawY + box.height - 8);
+    }
+
+    public void moveSelection(int delta) {
+        List<Upgrade> upgrades = currentUpgrades;
+        if (upgrades == null || upgrades.isEmpty()) {
+            return;
+        }
+        int count = upgrades.size();
+        selectedIndex = ((selectedIndex + delta) % count + count) % count;
+    }
+
+    public void select(int index) {
+        List<Upgrade> upgrades = currentUpgrades;
+        if (upgrades != null && index >= 0 && index < upgrades.size()) {
+            selectedIndex = index;
         }
     }
 
-    public void handleClick(int mouseX, int mouseY, Game game, Player player) {
-        if (upgradeBounds == null)
+    public void setPointer(int x, int y) {
+        Rectangle[] bounds = upgradeBounds;
+        if (bounds == null) {
             return;
+        }
+        for (int i = 0; i < bounds.length; i++) {
+            if (bounds[i].contains(x, y)) {
+                selectedIndex = i;
+                return;
+            }
+        }
+    }
 
-        for (int i = 0; i < upgradeBounds.length; i++) {
-            if (upgradeBounds[i].contains(mouseX, mouseY)) {
-                game.playUiClick();
-                currentUpgrades.get(i).apply(player);
-                game.setGameState(src.main.GameState.PLAYING);
-                game.resumeWave();
-                currentUpgrades = null;
-                upgradeBounds = null;
-                break;
+    public void confirm(Game game, Player player) {
+        List<Upgrade> upgrades = currentUpgrades;
+        int index = selectedIndex;
+        if (upgrades == null || index < 0 || index >= upgrades.size()) {
+            return;
+        }
+        game.playUiClick();
+        upgrades.get(index).apply(player);
+        game.resumeWave();
+        clear();
+    }
+
+    public void handleClick(int mouseX, int mouseY, Game game, Player player) {
+        Rectangle[] bounds = upgradeBounds;
+        if (bounds == null) {
+            return;
+        }
+        for (int i = 0; i < bounds.length; i++) {
+            if (bounds[i].contains(mouseX, mouseY)) {
+                selectedIndex = i;
+                confirm(game, player);
+                return;
             }
         }
     }
@@ -104,7 +165,11 @@ public class UpgradeScreen {
         upgradeBounds = null;
     }
 
-    private void drawCenteredWrappedText(Graphics g, String text, int x, int y, int maxWidth, int maxHeight) {
+    private double elapsedSeconds() {
+        return (System.nanoTime() - shownAtNanos) / 1_000_000_000.0;
+    }
+
+    private void drawWrappedText(Graphics2D g, String text, int x, int y, int maxWidth, int maxY) {
         FontMetrics fm = g.getFontMetrics();
         String[] words = text.split(" ");
         StringBuilder line = new StringBuilder();
@@ -117,31 +182,18 @@ public class UpgradeScreen {
                 line.append(candidate);
                 continue;
             }
-
-            if (line.length() == 0) {
-                drawCenteredLine(g, word, x, maxWidth, drawY, fm);
+            if (line.length() > 0) {
+                g.drawString(line.toString(), x, drawY);
                 drawY += fm.getHeight();
-                if (drawY > y + maxHeight) {
+                if (drawY > maxY) {
                     return;
                 }
-                continue;
+                line.setLength(0);
             }
-
-            drawCenteredLine(g, line.toString(), x, maxWidth, drawY, fm);
-            drawY += fm.getHeight();
-            if (drawY > y + maxHeight) {
-                return;
-            }
-            line.setLength(0);
             line.append(word);
         }
-
-        if (line.length() > 0 && drawY <= y + maxHeight) {
-            drawCenteredLine(g, line.toString(), x, maxWidth, drawY, fm);
+        if (line.length() > 0 && drawY <= maxY) {
+            g.drawString(line.toString(), x, drawY);
         }
-    }
-
-    private void drawCenteredLine(Graphics g, String text, int x, int maxWidth, int y, FontMetrics fm) {
-        g.drawString(text, x + ((maxWidth - fm.stringWidth(text)) / 2), y);
     }
 }

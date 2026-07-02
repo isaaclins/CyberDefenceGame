@@ -43,6 +43,11 @@ public class Particle {
         lifetime--;
     }
 
+    public void translatePosition(double deltaX, double deltaY) {
+        x += deltaX;
+        y += deltaY;
+    }
+
     public double getX() {
         return x;
     }

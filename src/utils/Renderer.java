@@ -4,15 +4,18 @@ import src.entity.Enemy;
 import src.entity.EnemyBullet;
 import src.entity.Pellet;
 import src.entity.Player;
+import src.entity.PowerUp;
 import src.entity.XP;
 import src.entity.LaserLink;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
+import java.awt.geom.Ellipse2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.geom.RoundRectangle2D;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -32,6 +35,14 @@ public class Renderer {
     private static final Color DASH_BAR_OUTLINE = new Color(196, 242, 255, 190);
     private static final Color DASH_BAR_FILL = new Color(92, 224, 255, 220);
     private static final Color DASH_BAR_READY_FILL = new Color(214, 249, 255, 245);
+    private static final Font COMBO_FONT = new Font("Arial", Font.BOLD, 18);
+    private static final Font POWER_UP_STATUS_FONT = new Font("Arial", Font.BOLD, 11);
+    private static final Color COMBO_LOW_COLOR = new Color(96, 224, 255);
+    private static final Color COMBO_HIGH_COLOR = new Color(255, 196, 64);
+    private static final Color STATUS_BAR_BACKGROUND = new Color(24, 32, 40, 210);
+    private static final Color SHIELD_BUBBLE_COLOR = new Color(96, 224, 255);
+    private static final double SHIELD_BUBBLE_RADIUS = 18.0;
+    private static final int COMBO_HIGH_STREAK = 20;
 
     private final int roomWidth;
     private final int roomHeight;
@@ -81,6 +92,8 @@ public class Renderer {
         GlowRenderer.drawGlow(g2d, playerShape, Color.RED, 5);
         g2d.setColor(Color.RED);
         g2d.fill(playerShape);
+
+        drawShieldBubble(g2d, player);
 
         drawPlayerHud(g2d, player);
 
@@ -217,6 +230,95 @@ public class Renderer {
         }
     }
 
+    public void drawComboMeter(Graphics2D g2d, int screenWidth, int streak, double xpMultiplier, double windowRatio) {
+        String comboText = "COMBO x" + streak;
+        String multiplierText = String.format("XP x%.1f", xpMultiplier);
+        Color comboColor = streak >= COMBO_HIGH_STREAK ? COMBO_HIGH_COLOR : COMBO_LOW_COLOR;
+
+        g2d.setFont(COMBO_FONT);
+        FontMetrics fm = g2d.getFontMetrics();
+        int barWidth = 90;
+        int x = screenWidth - Math.max(barWidth, fm.stringWidth(comboText)) - 14;
+
+        g2d.setColor(comboColor);
+        g2d.drawString(comboText, x, 30);
+
+        g2d.setFont(POWER_UP_STATUS_FONT);
+        g2d.setColor(new Color(255, 255, 255, 190));
+        g2d.drawString(multiplierText, x, 44);
+
+        int barHeight = 5;
+        int barY = 50;
+        g2d.setColor(STATUS_BAR_BACKGROUND);
+        g2d.fillRoundRect(x, barY, barWidth, barHeight, barHeight, barHeight);
+        g2d.setColor(comboColor);
+        g2d.fillRoundRect(x, barY, (int) Math.round(barWidth * Math.max(0.0, Math.min(1.0, windowRatio))), barHeight,
+                barHeight, barHeight);
+    }
+
+    public void drawPowerUpStatus(Graphics2D g2d, List<PowerUpStatusEntry> entries) {
+        if (entries.isEmpty()) {
+            return;
+        }
+
+        int x = 14;
+        int y = 16;
+        int barWidth = 74;
+        int barHeight = 5;
+        int rowHeight = 22;
+
+        g2d.setFont(POWER_UP_STATUS_FONT);
+        for (PowerUpStatusEntry entry : entries) {
+            g2d.setColor(entry.getColor());
+            g2d.drawString(entry.getLabel(), x, y);
+            g2d.setColor(STATUS_BAR_BACKGROUND);
+            g2d.fillRoundRect(x, y + 4, barWidth, barHeight, barHeight, barHeight);
+            g2d.setColor(entry.getColor());
+            g2d.fillRoundRect(x, y + 4, (int) Math.round(barWidth * Math.max(0.0, Math.min(1.0, entry.getRatio()))),
+                    barHeight, barHeight, barHeight);
+            y += rowHeight;
+        }
+    }
+
+    public static final class PowerUpStatusEntry {
+        private final String label;
+        private final Color color;
+        private final double ratio;
+
+        public PowerUpStatusEntry(String label, Color color, double ratio) {
+            this.label = label;
+            this.color = color;
+            this.ratio = ratio;
+        }
+
+        public String getLabel() {
+            return label;
+        }
+
+        public Color getColor() {
+            return color;
+        }
+
+        public double getRatio() {
+            return ratio;
+        }
+    }
+
+    private void drawShieldBubble(Graphics2D g2d, Player player) {
+        if (player.getShieldCharges() <= 0) {
+            return;
+        }
+
+        double diameter = SHIELD_BUBBLE_RADIUS * 2;
+        Ellipse2D bubble = new Ellipse2D.Double(player.getX() - SHIELD_BUBBLE_RADIUS,
+                player.getY() - SHIELD_BUBBLE_RADIUS, diameter, diameter);
+        int alpha = Math.min(150, 40 + (player.getShieldCharges() * 30));
+        GlowRenderer.drawGlow(g2d, bubble, SHIELD_BUBBLE_COLOR, 4);
+        g2d.setColor(new Color(SHIELD_BUBBLE_COLOR.getRed(), SHIELD_BUBBLE_COLOR.getGreen(),
+                SHIELD_BUBBLE_COLOR.getBlue(), alpha));
+        g2d.draw(bubble);
+    }
+
     private void collectLaserLinks(Set<LaserLink> visibleLaserLinks, RoomRenderBucket bucket) {
         if (bucket == null) {
             return;
@@ -246,6 +348,9 @@ public class Renderer {
         }
         for (XP xp : bucket.getXps()) {
             xp.render(g2d);
+        }
+        for (PowerUp powerUp : bucket.getPowerUps()) {
+            powerUp.render(g2d);
         }
         for (Particle particle : bucket.getParticles()) {
             particle.render(g2d);

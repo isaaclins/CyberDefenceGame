@@ -27,7 +27,13 @@ public class EffectManager {
     private static final Color PROJECTILE_CLASH_SPARK_COLOR = new Color(120, 228, 255);
     private static final Color DASH_CORE_COLOR = new Color(220, 250, 255);
     private static final Color DASH_STREAK_COLOR = new Color(96, 232, 255);
+    private static final Color CRIT_SPARK_COLOR = new Color(255, 216, 64);
+    private static final Color SHIELD_BLOCK_COLOR = new Color(96, 224, 255);
+    private static final Color TIME_WARP_TINT_COLOR = new Color(150, 90, 255);
+    private static final Color LOW_HEALTH_COLOR = new Color(255, 40, 40);
+    private static final Color BOSS_SPAWN_COLOR = new Color(200, 64, 255);
     private static final Stroke OVERLAY_STROKE = new BasicStroke(6f);
+    private static final double LOW_HEALTH_PULSE_STEP = 0.09;
 
     private final List<Particle> particles = new ArrayList<>();
 
@@ -36,6 +42,7 @@ public class EffectManager {
     private int levelPulseTicksRemaining;
     private int screenShakeTicksRemaining;
     private double screenShakeMagnitude;
+    private long tickCounter;
 
     public void reset() {
         particles.clear();
@@ -44,9 +51,11 @@ public class EffectManager {
         levelPulseTicksRemaining = 0;
         screenShakeTicksRemaining = 0;
         screenShakeMagnitude = 0;
+        tickCounter = 0;
     }
 
     public void tick() {
+        tickCounter++;
         if (damageFlashTicksRemaining > 0) {
             damageFlashTicksRemaining--;
         }
@@ -171,6 +180,43 @@ public class EffectManager {
         triggerScreenShake(2.8, 5);
     }
 
+    public void emitCritHit(double x, double y, Random random) {
+        emitBurst(8 + random.nextInt(4), x, y, 1.8, 3.6, 12, 20, 2.6, 4.2, 0.9, CRIT_SPARK_COLOR, 2, random);
+        triggerScreenShake(3.4, 4);
+    }
+
+    public void emitShieldBlock(double x, double y, Random random) {
+        int count = 14 + random.nextInt(4);
+        for (int i = 0; i < count; i++) {
+            double angle = (Math.PI * 2.0 * i) / count;
+            double speed = 1.6 + (random.nextDouble() * 0.6);
+            addParticle(new Particle(x + (Math.cos(angle) * 12.0), y + (Math.sin(angle) * 12.0),
+                    Math.cos(angle) * speed, Math.sin(angle) * speed, 14 + random.nextInt(5),
+                    2.2 + random.nextDouble(), 0.9, SHIELD_BLOCK_COLOR, 2, false));
+        }
+        triggerScreenShake(2.2, 4);
+    }
+
+    public void emitSplit(double x, double y, Color color, Random random) {
+        emitBurst(10 + random.nextInt(4), x, y, 1.6, 3.0, 12, 20, 2.4, 4.0, 0.9, color, 2, random);
+    }
+
+    public void emitPowerUpPickup(double x, double y, Color color, Random random) {
+        emitBurst(12 + random.nextInt(5), x, y, 1.2, 2.6, 16, 24, 2.6, 4.2, 0.92, color, 2, random);
+        triggerScreenShake(2.4, 4);
+    }
+
+    public void emitBossSpawn(double x, double y, Random random) {
+        int count = 24 + random.nextInt(6);
+        for (int i = 0; i < count; i++) {
+            double angle = (Math.PI * 2.0 * i) / count;
+            double speed = 1.4 + (random.nextDouble() * 1.2);
+            addParticle(new Particle(x, y, Math.cos(angle) * speed, Math.sin(angle) * speed, 20 + random.nextInt(8),
+                    3.0 + (random.nextDouble() * 2.0), 0.93, BOSS_SPAWN_COLOR, 3));
+        }
+        triggerScreenShake(5.0, 12);
+    }
+
     public void triggerDamageFlash() {
         damageFlashTicksRemaining = DAMAGE_FLASH_TICKS;
     }
@@ -184,16 +230,42 @@ public class EffectManager {
         return new Point(offsetX, offsetY);
     }
 
-    public void renderOverlay(Graphics2D g2d, int width, int height) {
+    public void renderOverlay(Graphics2D g2d, int width, int height, boolean timeWarpActive, boolean lowHealthActive) {
         Composite previousComposite = g2d.getComposite();
         Stroke previousStroke = g2d.getStroke();
 
+        renderTimeWarpTint(g2d, width, height, timeWarpActive);
+        renderLowHealthVignette(g2d, width, height, lowHealthActive);
         renderDamageFlash(g2d, width, height);
         renderPulse(g2d, width, height, wavePulseTicksRemaining, WAVE_PULSE_TICKS, WAVE_PULSE_COLOR);
         renderPulse(g2d, width, height, levelPulseTicksRemaining, LEVEL_PULSE_TICKS, LEVEL_PULSE_COLOR);
 
         g2d.setComposite(previousComposite);
         g2d.setStroke(previousStroke);
+    }
+
+    private void renderTimeWarpTint(Graphics2D g2d, int width, int height, boolean timeWarpActive) {
+        if (!timeWarpActive) {
+            return;
+        }
+
+        float pulse = (float) ((Math.sin(tickCounter * 0.12) + 1.0) / 2.0);
+        g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.08f + (0.04f * pulse)));
+        g2d.setColor(TIME_WARP_TINT_COLOR);
+        g2d.fillRect(0, 0, width, height);
+    }
+
+    private void renderLowHealthVignette(Graphics2D g2d, int width, int height, boolean lowHealthActive) {
+        if (!lowHealthActive) {
+            return;
+        }
+
+        float pulse = (float) ((Math.sin(tickCounter * LOW_HEALTH_PULSE_STEP) + 1.0) / 2.0);
+        g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.12f + (0.18f * pulse)));
+        g2d.setColor(LOW_HEALTH_COLOR);
+        g2d.setStroke(OVERLAY_STROKE);
+        g2d.drawRect(4, 4, width - 8, height - 8);
+        g2d.drawRect(10, 10, width - 20, height - 20);
     }
 
     private void renderDamageFlash(Graphics2D g2d, int width, int height) {

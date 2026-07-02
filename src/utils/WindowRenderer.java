@@ -8,6 +8,7 @@ import src.entity.EnemyBullet;
 import src.entity.LaserLink;
 import src.entity.Particle;
 import src.entity.Pellet;
+import src.entity.PowerUp;
 import src.entity.XP;
 
 public class WindowRenderer {
@@ -44,6 +45,9 @@ public class WindowRenderer {
             }
             for (XP xp : bucket.getXps()) {
                 xp.render(g2d);
+            }
+            for (PowerUp powerUp : bucket.getPowerUps()) {
+                powerUp.render(g2d);
             }
             for (Particle particle : bucket.getParticles()) {
                 particle.render(g2d);

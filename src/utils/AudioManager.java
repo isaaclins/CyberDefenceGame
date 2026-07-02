@@ -108,6 +108,46 @@ public class AudioManager {
         play("laserLink", 30);
     }
 
+    public void playCritHit() {
+        play("critHit", 55);
+    }
+
+    public void playComboMilestone() {
+        play("comboMilestone", 120);
+    }
+
+    public void playComboLost() {
+        play("comboLost", 200);
+    }
+
+    public void playPowerUpPickup() {
+        play("powerUpPickup", 90);
+    }
+
+    public void playShieldBlock() {
+        play("shieldBlock", 90);
+    }
+
+    public void playSplit() {
+        play("split", 60);
+    }
+
+    public void playTimeWarp() {
+        play("timeWarp", 200);
+    }
+
+    public void playHeartbeat() {
+        play("heartbeat", 640);
+    }
+
+    public void playBossSpawn() {
+        play("bossSpawn", 500);
+    }
+
+    public void playBossDefeated() {
+        play("bossDown", 500);
+    }
+
     public void playMutantRadiation() {
         play("mutantRadiation", 70);
     }
@@ -156,6 +196,16 @@ public class AudioManager {
             register("mutantRadiation", buildSignal(150, 2100, 240, 0.17, 0.20, 0.24), 3);
             register("mutantRadiationAura", buildSignal(24, 3600, 900, 0.10, 0.56, 0.22), 4);
             register("uiClick", buildSignal(50, 920, 700, 0.12, 0.01, 0.02), 2);
+            register("critHit", buildSignal(75, 1500, 480, 0.30, 0.14, 0.22), 3);
+            register("comboMilestone", buildMelody(new double[] { 523, 659, 784 }, 45, 0.16), 2);
+            register("comboLost", buildMelody(new double[] { 392, 311, 233 }, 55, 0.14), 2);
+            register("powerUpPickup", buildMelody(new double[] { 440, 660, 880, 1108 }, 40, 0.18), 2);
+            register("shieldBlock", buildSignal(95, 320, 940, 0.34, 0.06, 0.28), 3);
+            register("split", buildSignal(105, 520, 190, 0.28, 0.34, 0.10), 3);
+            register("timeWarp", buildMelody(new double[] { 880, 660, 440, 330 }, 60, 0.16), 2);
+            register("heartbeat", buildSignal(130, 82, 52, 0.42, 0.04, 0.10), 2);
+            register("bossSpawn", buildMelody(new double[] { 220, 185, 147 }, 110, 0.22), 2);
+            register("bossDown", buildMelody(new double[] { 880, 660, 880, 1108 }, 60, 0.20), 2);
         } catch (IllegalArgumentException | LineUnavailableException e) {
             enabled = false;
             close();

@@ -9,9 +9,13 @@ This project is currently under development. Here is a list of current and plann
 ### Core Gameplay
 
 - **Gun Classes:** Choose between different gun classes like Shotgun, Sniper, and SMG, each with unique stats.
-- **Enemy Variety:** Face off against different types of enemies: Small, Normal, Big, and Bosses.
+- **Enemy Variety:** Face off against different types of enemies: Small, Normal, Big, Splitters that break apart into swarms, and special behaviors like laser twins, warpers, mutants, and spiral turrets.
+- **Boss Waves:** Every 10th wave a boss crashes the party and guarantees a power-up drop.
 - **XP & Leveling:** Gain experience from defeating enemies, level up, and become more powerful.
-- **Upgrades:** When you level up, you can choose from a selection of upgrades to enhance your abilities.
+- **Kill Combos:** Chain kills to build a combo meter that multiplies XP drops up to 3x. Taking a hit breaks the combo.
+- **Critical Hits:** Every shot has a chance to crit for double damage, with a freeze-frame on crit kills.
+- **Power-Ups:** Enemies drop pickups: Overdrive (faster fire), Shield (blocks a hit), Time Warp (slows enemies), and Magnet (pulls in all XP).
+- **Upgrades:** When you level up, choose from upgrades including Piercing Rounds, Ricochet, and Deadeye (crit chance).
 
 ### UI/UX
 

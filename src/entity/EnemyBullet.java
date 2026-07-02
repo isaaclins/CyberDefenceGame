@@ -17,6 +17,7 @@ public class EnemyBullet {
     private double y;
     private double previousX;
     private double previousY;
+    private double distanceTravelled;
 
     public EnemyBullet(double x, double y, double angle, double speed, int damage, double size, Color color) {
         this.x = x;
@@ -31,10 +32,24 @@ public class EnemyBullet {
     }
 
     public void move() {
+        move(1.0);
+    }
+
+    public void move(double timeScale) {
         previousX = x;
         previousY = y;
-        x += velocityX;
-        y += velocityY;
+        double scaledVelocityX = velocityX * timeScale;
+        double scaledVelocityY = velocityY * timeScale;
+        x += scaledVelocityX;
+        y += scaledVelocityY;
+        distanceTravelled += Math.sqrt((scaledVelocityX * scaledVelocityX) + (scaledVelocityY * scaledVelocityY));
+    }
+
+    public void translatePosition(double deltaX, double deltaY) {
+        x += deltaX;
+        y += deltaY;
+        previousX += deltaX;
+        previousY += deltaY;
     }
 
     public void render(Graphics g) {
@@ -67,5 +82,9 @@ public class EnemyBullet {
 
     public double getSize() {
         return size;
+    }
+
+    public boolean hasExceededTravelDistance(double maxDistance) {
+        return distanceTravelled > maxDistance;
     }
 }

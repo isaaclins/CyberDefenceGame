@@ -6,6 +6,9 @@ public class Player {
     private static final double DIRECTION_EPSILON = 0.0001;
     private static final double DASH_SPEED = 38.0;
     private static final int DASH_COOLDOWN_TICKS = 90;
+    private static final double BASE_CRITICAL_CHANCE = 0.05;
+    private static final double CRITICAL_DAMAGE_MULTIPLIER = 2.0;
+    private static final int MAX_SHIELD_CHARGES = 3;
 
     private double x, y;
     private double previousX, previousY;
@@ -30,6 +33,10 @@ public class Player {
     private double lastMoveDirectionY;
     private boolean hasMoveDirection;
     private int dashCooldownTicksRemaining;
+    private double criticalChance = BASE_CRITICAL_CHANCE;
+    private int shieldCharges;
+    private int pierceCount;
+    private int ricochetCount;
 
     public Player(double startX, double startY) {
         this.x = startX;
@@ -285,6 +292,63 @@ public class Player {
             return;
         }
         acceleration = Math.max(0.1, acceleration * factor);
+    }
+
+    public double getCriticalChance() {
+        return criticalChance;
+    }
+
+    public double getCriticalDamageMultiplier() {
+        return CRITICAL_DAMAGE_MULTIPLIER;
+    }
+
+    public void increaseCriticalChance(double amount) {
+        if (amount <= 0) {
+            return;
+        }
+        criticalChance = Math.min(1.0, criticalChance + amount);
+    }
+
+    public int getShieldCharges() {
+        return shieldCharges;
+    }
+
+    public boolean addShieldCharge() {
+        if (shieldCharges >= MAX_SHIELD_CHARGES) {
+            return false;
+        }
+        shieldCharges++;
+        return true;
+    }
+
+    public boolean consumeShieldCharge() {
+        if (shieldCharges <= 0) {
+            return false;
+        }
+        shieldCharges--;
+        return true;
+    }
+
+    public int getPierceCount() {
+        return pierceCount;
+    }
+
+    public void increasePierceCount(int amount) {
+        if (amount <= 0) {
+            return;
+        }
+        pierceCount += amount;
+    }
+
+    public int getRicochetCount() {
+        return ricochetCount;
+    }
+
+    public void increaseRicochetCount(int amount) {
+        if (amount <= 0) {
+            return;
+        }
+        ricochetCount += amount;
     }
 
     private void updateLastMoveDirection(boolean upPressed, boolean downPressed, boolean leftPressed,

@@ -40,7 +40,16 @@ public class XP {
         velocityY *= friction;
     }
 
+    public void translatePosition(double deltaX, double deltaY) {
+        x += deltaX;
+        y += deltaY;
+    }
+
     public void moveTo(double targetX, double targetY) {
+        moveTo(targetX, targetY, 1.0);
+    }
+
+    public void moveTo(double targetX, double targetY, double accelerationScale) {
         double dx = targetX - x;
         double dy = targetY - y;
         double distanceSquared = (dx * dx) + (dy * dy);
@@ -49,8 +58,8 @@ public class XP {
         }
 
         double distance = Math.sqrt(distanceSquared);
-        velocityX += speed * (dx / distance);
-        velocityY += speed * (dy / distance);
+        velocityX += speed * accelerationScale * (dx / distance);
+        velocityY += speed * accelerationScale * (dy / distance);
     }
 
     public double getX() {

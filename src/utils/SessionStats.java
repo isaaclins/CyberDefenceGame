@@ -6,6 +6,8 @@ public class SessionStats {
     private long elapsedTicks;
     private int enemiesDefeated;
     private int highestLevel;
+    private int highestCombo;
+    private int powerUpsCollected;
 
     public SessionStats() {
         reset();
@@ -15,6 +17,8 @@ public class SessionStats {
         elapsedTicks = 0;
         enemiesDefeated = 0;
         highestLevel = 1;
+        highestCombo = 0;
+        powerUpsCollected = 0;
     }
 
     public void tick() {
@@ -31,8 +35,26 @@ public class SessionStats {
         }
     }
 
+    public void updateCombo(int currentStreak) {
+        if (currentStreak > highestCombo) {
+            highestCombo = currentStreak;
+        }
+    }
+
+    public void recordPowerUpCollected() {
+        powerUpsCollected++;
+    }
+
     public int getEnemiesDefeated() {
         return enemiesDefeated;
+    }
+
+    public int getHighestCombo() {
+        return highestCombo;
+    }
+
+    public int getPowerUpsCollected() {
+        return powerUpsCollected;
     }
 
     public int getHighestLevel() {

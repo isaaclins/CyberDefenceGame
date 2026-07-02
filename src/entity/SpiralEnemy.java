@@ -29,7 +29,7 @@ public class SpiralEnemy extends Enemy {
     }
 
     @Override
-    public void move() {
+    public void move(double timeScale) {
         velocityX = 0.0;
         velocityY = 0.0;
     }

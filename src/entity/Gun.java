@@ -22,6 +22,7 @@ public abstract class Gun {
     protected int reloadStartAmmo;
     protected int reloadTicksTotal;
     protected boolean reloadStartedSinceLastCheck;
+    protected double cooldownScale = 1.0;
 
     public static final class TickResult {
         private static final TickResult NONE = new TickResult(false, false);
@@ -115,7 +116,7 @@ public abstract class Gun {
         }
 
         currentAmmo--;
-        shotCooldownTicksRemaining = shotCooldownTicks;
+        shotCooldownTicksRemaining = Math.max(1, (int) Math.round(shotCooldownTicks * cooldownScale));
         if (currentAmmo == 0) {
             beginReload();
         }
@@ -183,6 +184,10 @@ public abstract class Gun {
 
     public void setShotCooldownTicks(int shotCooldownTicks) {
         this.shotCooldownTicks = Math.max(1, shotCooldownTicks);
+    }
+
+    public void setCooldownScale(double cooldownScale) {
+        this.cooldownScale = Math.max(0.1, cooldownScale);
     }
 
     public void increaseMagazineSize(int amount) {

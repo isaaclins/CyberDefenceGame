@@ -54,6 +54,20 @@ assert_present "drawDashReadyBar" src/utils/Renderer.java
 assert_present "shootFromCenter" src/entity/Player.java src/main/Game.java
 assert_present "aimGunDirectlyAt" src/entity/Player.java src/main/Game.java
 assert_present "getPreviousX|getPreviousY" src/entity/Pellet.java src/entity/Player.java src/main/Game.java
+assert_present "ComboTracker|recordKill|breakCombo|getXpMultiplier" src/utils/ComboTracker.java src/main/Game.java
+assert_present "PowerUp|applyPowerUp|dropPowerUp|updatePowerUps" src/entity/PowerUp.java src/main/Game.java src/utils/RoomRenderBucket.java src/utils/Renderer.java src/utils/WindowRenderer.java
+assert_present "SplitterEnemy|spawnChildren" src/entity/SplitterEnemy.java src/main/Game.java src/utils/WaveDirector.java
+assert_present "BossEnemy|announceBossSpawns" src/entity/BossEnemy.java src/main/Game.java src/utils/WaveDirector.java
+assert_present "getCriticalChance|increaseCriticalChance" src/entity/Player.java src/main/Game.java
+assert_present "consumeShieldCharge|addShieldCharge|getShieldCharges" src/entity/Player.java src/main/Game.java src/utils/Renderer.java
+assert_present "setPierceRemaining|setRicochetRemaining|ricochetToward|markHit|hasAlreadyHit" src/entity/Pellet.java src/main/Game.java
+assert_present "damagePlayer|handleEnemyDeath|triggerHitStop" src/main/Game.java
+assert_present "setCooldownScale" src/entity/Gun.java src/main/Game.java
+assert_present "drawComboMeter|drawPowerUpStatus|drawShieldBubble" src/utils/Renderer.java
+assert_present "emitCritHit|emitShieldBlock|emitSplit|emitPowerUpPickup|emitBossSpawn" src/utils/EffectManager.java src/main/Game.java
+assert_present "playCritHit|playComboMilestone|playPowerUpPickup|playShieldBlock|playSplit|playTimeWarp|playHeartbeat|playBossSpawn|playBossDefeated" src/utils/AudioManager.java src/main/Game.java
+assert_present "ScreenGrid|locationForRoom|floorMod" src/utils/ScreenGrid.java src/main/Game.java
+assert_absent "initialWindowLocation\\.x \\+ \\(roomCol|initialWindowLocation\\.x \\+ \\(roomWindow" src/main/Game.java
 
 if [ "$fail" -ne 0 ]; then
     exit 1

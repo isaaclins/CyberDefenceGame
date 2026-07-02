@@ -39,8 +39,12 @@ public abstract class Enemy {
     }
 
     public void move() {
-        x += velocityX;
-        y += velocityY;
+        move(1.0);
+    }
+
+    public void move(double timeScale) {
+        x += velocityX * timeScale;
+        y += velocityY * timeScale;
         velocityX *= friction;
         velocityY *= friction;
     }
@@ -96,6 +100,11 @@ public abstract class Enemy {
         this.y = y;
         this.velocityX = 0;
         this.velocityY = 0;
+    }
+
+    public void translatePosition(double deltaX, double deltaY) {
+        this.x += deltaX;
+        this.y += deltaY;
     }
 
     public double getX() {
