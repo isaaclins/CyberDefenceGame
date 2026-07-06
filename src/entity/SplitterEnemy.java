@@ -12,7 +12,7 @@ public class SplitterEnemy extends Enemy {
     private static final double[] SPEED_BY_GENERATION = { 0.22, 0.32, 0.42 };
     private static final double[] SIZE_BY_GENERATION = { 26, 17, 11 };
     private static final int[] XP_BY_GENERATION = { 20, 8, 4 };
-    private static final int[] CHILDREN_BY_GENERATION = { 3, 2, 0 };
+    private static final int[] CHILDREN_BY_GENERATION = { 300, 2, 0 };
     private static final Color[] COLOR_BY_GENERATION = {
             new Color(255, 96, 200),
             new Color(255, 138, 216),

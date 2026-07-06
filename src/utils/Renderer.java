@@ -1,5 +1,6 @@
 package src.utils;
 
+import src.entity.Chest;
 import src.entity.Enemy;
 import src.entity.EnemyBullet;
 import src.entity.Pellet;
@@ -26,7 +27,6 @@ public class Renderer {
     private static final Font LEVEL_FONT = new Font("Arial", Font.BOLD, 14);
     private static final Font WAVE_FONT = new Font("Arial", Font.BOLD, 20);
     private static final Font LEVEL_PROGRESS_FONT = new Font("Arial", Font.PLAIN, 15);
-    private static final Color ROOM_COLOR = new Color(30, 30, 30);
     private static final Color XP_BAR_BACKGROUND = new Color(70, 70, 70, 220);
     private static final Color XP_BAR_COLOR = new Color(64, 220, 120);
     private static final Color AMMO_COLOR = new Color(255, 255, 255, 150);
@@ -352,6 +352,9 @@ public class Renderer {
         for (PowerUp powerUp : bucket.getPowerUps()) {
             powerUp.render(g2d);
         }
+        for (Chest chest : bucket.getChests()) {
+            chest.render(g2d);
+        }
         for (Particle particle : bucket.getParticles()) {
             particle.render(g2d);
         }
@@ -360,8 +363,6 @@ public class Renderer {
     private void renderRoom(Graphics2D g2d, int col, int row) {
         int roomX = col * roomWidth;
         int roomY = row * roomHeight;
-        g2d.setColor(ROOM_COLOR);
-        g2d.fillRect(roomX, roomY, roomWidth, roomHeight);
         g2d.setColor(Color.GRAY);
         g2d.drawRect(roomX, roomY, roomWidth, roomHeight);
     }

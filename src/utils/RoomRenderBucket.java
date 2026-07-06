@@ -3,6 +3,7 @@ package src.utils;
 import java.util.ArrayList;
 import java.util.List;
 
+import src.entity.Chest;
 import src.entity.Enemy;
 import src.entity.EnemyBullet;
 import src.entity.LaserLink;
@@ -20,6 +21,7 @@ public class RoomRenderBucket {
     private final List<Pellet> pellets = new ArrayList<>();
     private final List<XP> xps = new ArrayList<>();
     private final List<PowerUp> powerUps = new ArrayList<>();
+    private final List<Chest> chests = new ArrayList<>();
     private final List<Particle> particles = new ArrayList<>();
 
     public RoomRenderBucket(int roomCol, int roomRow) {
@@ -61,6 +63,10 @@ public class RoomRenderBucket {
 
     public List<PowerUp> getPowerUps() {
         return powerUps;
+    }
+
+    public List<Chest> getChests() {
+        return chests;
     }
 
     public List<Particle> getParticles() {

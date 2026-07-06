@@ -16,6 +16,8 @@ This project is currently under development. Here is a list of current and plann
 - **Critical Hits:** Every shot has a chance to crit for double damage, with a freeze-frame on crit kills.
 - **Power-Ups:** Enemies drop pickups: Overdrive (faster fire), Shield (blocks a hit), Time Warp (slows enemies), and Magnet (pulls in all XP).
 - **Upgrades:** When you level up, choose from upgrades including Piercing Rounds, Ricochet, and Deadeye (crit chance).
+- **Supply Chests:** Every second cleared wave drops a chest near the player. Walk onto it to choose 1 of 3 stackable items.
+- **Stackable Items:** Ten item options support rapid-fire, charged shots, ricochet, pierce, crit burst, shields, mobility, XP economy, scatter volleys, and Time Warp control builds.
 
 ### UI/UX
 
@@ -88,7 +90,7 @@ Unsigned macOS builds may require **Right-click → Open** the first time you ru
 - **Shoot:** `Spacebar`
 - **Reload:** `R`
 - **Pause:** `Escape` or `P`
-- **Menus:** Use the `Mouse` to navigate and click on buttons in the menu, game over, and upgrade screens.
+- **Menus:** Use `1-3`, arrows or `WASD` plus `Enter` or `Space`, or the `Mouse` to choose menu, upgrade, and supply chest options.
 
 ## Contributing
 

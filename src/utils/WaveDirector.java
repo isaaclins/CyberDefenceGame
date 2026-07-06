@@ -40,7 +40,7 @@ public class WaveDirector {
     private static final int LASER_TWIN_UNLOCK_WAVE = 3;
     private static final int MUTANT_UNLOCK_WAVE = 4;
     private static final int WARPER_UNLOCK_WAVE = 5;
-    private static final int SPLITTER_UNLOCK_WAVE = 6;
+    private static final int SPLITTER_UNLOCK_WAVE = 1;
     private static final int BOSS_WAVE_INTERVAL = 10;
     private static final double BOSS_SPAWN_RADIUS = 380.0;
 

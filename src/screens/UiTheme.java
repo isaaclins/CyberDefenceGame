@@ -75,10 +75,8 @@ public final class UiTheme {
         g.drawString(text, centerX - (fm.stringWidth(text) / 2), baselineY);
     }
 
-    // Solid dark canvas plus a faint grid, giving the clean cyber feel without noise.
+    // Faint grid only. The top-level window background stays transparent.
     public static void drawBackdrop(Graphics2D g, int width, int height) {
-        g.setColor(BACKGROUND);
-        g.fillRect(0, 0, width, height);
         g.setColor(new Color(255, 255, 255, 7));
         int spacing = 36;
         for (int x = spacing; x < width; x += spacing) {
@@ -89,11 +87,8 @@ public final class UiTheme {
         }
     }
 
-    // A dim scrim over the live game, faded in by progress (0..1).
+    // Intentionally no full-window scrim: the background should remain transparent.
     public static void drawScrim(Graphics2D g, int width, int height, double progress) {
-        int alpha = (int) Math.round(190 * clamp01(progress));
-        g.setColor(new Color(8, 10, 13, alpha));
-        g.fillRect(0, 0, width, height);
     }
 
     // A selectable row/card. Highlight blends toward the accent as focus grows (0..1).

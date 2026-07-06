@@ -56,6 +56,10 @@ assert_present "aimGunDirectlyAt" src/entity/Player.java src/main/Game.java
 assert_present "getPreviousX|getPreviousY" src/entity/Pellet.java src/entity/Player.java src/main/Game.java
 assert_present "ComboTracker|recordKill|breakCombo|getXpMultiplier" src/utils/ComboTracker.java src/main/Game.java
 assert_present "PowerUp|applyPowerUp|dropPowerUp|updatePowerUps" src/entity/PowerUp.java src/main/Game.java src/utils/RoomRenderBucket.java src/utils/Renderer.java src/utils/WindowRenderer.java
+assert_present "Chest|ITEM_CHEST|updateChests|presentItemChoices|getRandomItems" src/entity/Chest.java src/main/Game.java src/main/GameState.java src/screens/UpgradeScreen.java src/utils/UpgradeManager.java
+assert_present "VelocityRoundsItem|RicochetCatalystItem|ChargeCapacitorItem|DrumFeederItem|PhaseNeedleItem|DeadeyeLensItem|BulwarkCoreItem|KineticBootsItem|MagnetBloomItem|ScatterMatrixItem|ChronoAnchorItem" src/items src/utils/UpgradeManager.java
+assert_present "addItemStack|getItemStack|getXpGainMultiplier|getTimeWarpDurationTicks|reduceDashCooldown" src/entity/Player.java src/main/Game.java
+assert_present "applyShotPerks|hasChargedShots|multiplyDamage|getSpeed|CHARGE_SHOT_MAX_TICKS" src/entity/Player.java src/entity/Pellet.java src/main/Game.java
 assert_present "SplitterEnemy|spawnChildren" src/entity/SplitterEnemy.java src/main/Game.java src/utils/WaveDirector.java
 assert_present "BossEnemy|announceBossSpawns" src/entity/BossEnemy.java src/main/Game.java src/utils/WaveDirector.java
 assert_present "getCriticalChance|increaseCriticalChance" src/entity/Player.java src/main/Game.java
@@ -67,6 +71,8 @@ assert_present "drawComboMeter|drawPowerUpStatus|drawShieldBubble" src/utils/Ren
 assert_present "emitCritHit|emitShieldBlock|emitSplit|emitPowerUpPickup|emitBossSpawn" src/utils/EffectManager.java src/main/Game.java
 assert_present "playCritHit|playComboMilestone|playPowerUpPickup|playShieldBlock|playSplit|playTimeWarp|playHeartbeat|playBossSpawn|playBossDefeated" src/utils/AudioManager.java src/main/Game.java
 assert_present "ScreenGrid|locationForRoom|floorMod" src/utils/ScreenGrid.java src/main/Game.java
+assert_present "GraphicsEnvironment|getScreenDevices|getVirtualScreenBounds" src/main/Game.java
+assert_present "Rectangle screenBounds|screenBounds\\.x|screenBounds\\.y" src/utils/ScreenGrid.java
 assert_absent "initialWindowLocation\\.x \\+ \\(roomCol|initialWindowLocation\\.x \\+ \\(roomWindow" src/main/Game.java
 
 if [ "$fail" -ne 0 ]; then

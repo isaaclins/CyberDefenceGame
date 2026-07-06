@@ -80,12 +80,37 @@ public class Pellet {
         return damage;
     }
 
+    public void multiplyDamage(double multiplier) {
+        if (multiplier <= 0.0) {
+            return;
+        }
+        damage *= multiplier;
+    }
+
     public double getKnockback() {
         return knockback;
     }
 
+    public void multiplyKnockback(double multiplier) {
+        if (multiplier <= 0.0) {
+            return;
+        }
+        knockback *= multiplier;
+    }
+
     public double getSize() {
         return size;
+    }
+
+    public void multiplySize(double multiplier) {
+        if (multiplier <= 0.0) {
+            return;
+        }
+        size = Math.max(1.0, size * multiplier);
+    }
+
+    public double getSpeed() {
+        return Math.sqrt((velocityX * velocityX) + (velocityY * velocityY));
     }
 
     public boolean hasExceededTravelDistance(double maxDistance) {

@@ -1,6 +1,7 @@
 package src.screens;
 
 import src.entity.Player;
+import src.items.Item;
 import src.main.Game;
 import src.upgrades.Upgrade;
 
@@ -12,13 +13,47 @@ import java.awt.Rectangle;
 import java.util.List;
 
 public class UpgradeScreen {
+    private static final int LEVEL_UP_CHOICE_COUNT = 3;
+    private static final int SUPPLY_CHEST_CHOICE_COUNT = 5;
+
     private volatile List<Upgrade> currentUpgrades;
     private volatile Rectangle[] upgradeBounds;
     private volatile int selectedIndex;
     private volatile long shownAtNanos;
+    private volatile Player currentPlayer;
+    private volatile String title = "LEVEL UP";
+    private volatile String subtitle = "Choose an upgrade";
+    private volatile boolean resetLevelUpOnConfirm = true;
 
     public void presentUpgrades(Game game) {
-        this.currentUpgrades = game.getUpgradeManager().getRandomUpgrades(3);
+        presentChoices(
+            game,
+            game.getPlayer(),
+            game.getUpgradeManager().getRandomUpgrades(LEVEL_UP_CHOICE_COUNT),
+            "LEVEL UP",
+            "Choose an upgrade",
+            true
+        );
+    }
+
+    public void presentItemChoices(Game game, Player player) {
+        presentChoices(
+            game,
+            player,
+            game.getUpgradeManager().getRandomItems(SUPPLY_CHEST_CHOICE_COUNT),
+            "SUPPLY CHEST",
+            "Choose an item",
+            false
+        );
+    }
+
+    private void presentChoices(Game game, Player player, List<Upgrade> choices, String title, String subtitle,
+            boolean resetLevelUpOnConfirm) {
+        this.currentUpgrades = choices;
+        this.currentPlayer = player;
+        this.title = title;
+        this.subtitle = subtitle;
+        this.resetLevelUpOnConfirm = resetLevelUpOnConfirm;
         this.selectedIndex = 0;
         this.shownAtNanos = System.nanoTime();
 
@@ -61,11 +96,11 @@ public class UpgradeScreen {
         int centerX = width / 2;
         g2d.setFont(UiTheme.HEADING);
         g2d.setColor(UiTheme.ACCENT);
-        UiTheme.drawCenteredString(g2d, "LEVEL UP", centerX, (int) (height * 0.13));
+        UiTheme.drawCenteredString(g2d, title, centerX, (int) (height * 0.13));
 
         g2d.setFont(UiTheme.BODY);
         g2d.setColor(UiTheme.MUTED);
-        UiTheme.drawCenteredString(g2d, "Choose an upgrade", centerX, (int) (height * 0.13) + 22);
+        UiTheme.drawCenteredString(g2d, subtitle, centerX, (int) (height * 0.13) + 22);
 
         for (int i = 0; i < upgrades.size(); i++) {
             renderCard(g2d, upgrades, bounds, focusedIndex, i, elapsed);
@@ -73,7 +108,8 @@ public class UpgradeScreen {
 
         g2d.setFont(UiTheme.HINT);
         g2d.setColor(UiTheme.MUTED);
-        UiTheme.drawCenteredString(g2d, "1-3 / arrows  select      ENTER  confirm", centerX, height - 16);
+        UiTheme.drawCenteredString(g2d, "1-" + upgrades.size() + " / arrows  select      ENTER  confirm", centerX,
+                height - 16);
     }
 
     private void renderCard(Graphics2D g2d, List<Upgrade> upgrades, Rectangle[] bounds, int focusedIndex, int index,
@@ -95,14 +131,50 @@ public class UpgradeScreen {
         g2d.setColor(UiTheme.mix(UiTheme.MUTED, UiTheme.ACCENT, focus));
         g2d.drawString("[" + (index + 1) + "]", box.x + 16, drawY + 20);
 
+        if (upgrade instanceof Item) {
+            drawTypeBadge(g2d, box, drawY, focus);
+        }
+
         g2d.setFont(UiTheme.LABEL);
         g2d.setColor(UiTheme.mix(UiTheme.TEXT, UiTheme.ACCENT, focus));
         FontMetrics fm = g2d.getFontMetrics();
-        g2d.drawString(upgrade.getName(), box.x + 42, drawY + 14 + fm.getAscent() - 4);
+        g2d.drawString(getDisplayName(upgrade), box.x + 42, drawY + 14 + fm.getAscent() - 4);
 
         g2d.setFont(UiTheme.BODY);
         g2d.setColor(UiTheme.MUTED);
-        drawWrappedText(g2d, upgrade.getDescription(), box.x + 42, drawY + 34, box.width - 58, drawY + box.height - 8);
+        drawWrappedText(g2d, getDisplayDescription(upgrade), box.x + 42, drawY + 34, box.width - 58,
+                drawY + box.height - 8);
+    }
+
+    private String getDisplayName(Upgrade upgrade) {
+        if (upgrade instanceof Item && currentPlayer != null) {
+            return ((Item) upgrade).getName(currentPlayer);
+        }
+        return upgrade.getName();
+    }
+
+    private String getDisplayDescription(Upgrade upgrade) {
+        if (upgrade instanceof Item && currentPlayer != null) {
+            return ((Item) upgrade).getDescription(currentPlayer);
+        }
+        return upgrade.getDescription();
+    }
+
+    private void drawTypeBadge(Graphics2D g2d, Rectangle box, int drawY, double focus) {
+        String label = "ITEM";
+        g2d.setFont(UiTheme.SMALL);
+        FontMetrics fm = g2d.getFontMetrics();
+        int paddingX = 8;
+        int badgeWidth = fm.stringWidth(label) + (paddingX * 2);
+        int badgeHeight = 17;
+        int badgeX = box.x + box.width - badgeWidth - 14;
+        int badgeY = drawY + 10;
+
+        g2d.setColor(UiTheme.mix(UiTheme.PANEL, UiTheme.ACCENT, 0.18 + (focus * 0.18)));
+        g2d.fillRoundRect(badgeX, badgeY, badgeWidth, badgeHeight, 8, 8);
+        g2d.setColor(UiTheme.mix(UiTheme.MUTED, UiTheme.ACCENT, 0.65 + (focus * 0.25)));
+        g2d.drawRoundRect(badgeX, badgeY, badgeWidth, badgeHeight, 8, 8);
+        g2d.drawString(label, badgeX + paddingX, badgeY + fm.getAscent() + 1);
     }
 
     public void moveSelection(int delta) {
@@ -142,7 +214,11 @@ public class UpgradeScreen {
         }
         game.playUiClick();
         upgrades.get(index).apply(player);
-        game.resumeWave();
+        if (resetLevelUpOnConfirm) {
+            game.resumeWave();
+        } else {
+            game.resumeAfterItemChoice();
+        }
         clear();
     }
 
@@ -163,6 +239,7 @@ public class UpgradeScreen {
     public void clear() {
         currentUpgrades = null;
         upgradeBounds = null;
+        currentPlayer = null;
     }
 
     private double elapsedSeconds() {

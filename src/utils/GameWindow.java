@@ -8,20 +8,21 @@ public class GameWindow {
     private final double width;
     private final double height;
 
-    public GameWindow(String title, int width, int height, Canvas canvas, int defaultCloseOperation) {
-        this(title, width, height, canvas, defaultCloseOperation, true);
+    public GameWindow(String title, int width, int height, Component renderSurface, int defaultCloseOperation) {
+        this(title, width, height, renderSurface, defaultCloseOperation, true);
     }
 
-    public GameWindow(String title, int width, int height, Canvas canvas, int defaultCloseOperation,
+    public GameWindow(String title, int width, int height, Component renderSurface, int defaultCloseOperation,
             boolean focusableWindow) {
         this.width = width;
         this.height = height;
         frame = new JFrame(title);
         frame.setUndecorated(true);
+        TransparentBackground.configureWindow(frame, renderSurface);
         frame.setFocusableWindowState(focusableWindow);
         frame.setAutoRequestFocus(focusableWindow);
-        canvas.setFocusable(focusableWindow);
-        frame.add(canvas);
+        renderSurface.setFocusable(focusableWindow);
+        frame.add(renderSurface);
         frame.pack();
         frame.setDefaultCloseOperation(defaultCloseOperation);
         frame.setLocationRelativeTo(null);
@@ -42,11 +43,11 @@ public class GameWindow {
         return frame.getLocation();
     }
 
-    public void requestCanvasFocus(Canvas canvas) {
-        if (frame != null && canvas != null) {
+    public void requestRenderSurfaceFocus(Component renderSurface) {
+        if (frame != null && renderSurface != null) {
             frame.toFront();
-            canvas.requestFocus();
-            canvas.requestFocusInWindow();
+            renderSurface.requestFocus();
+            renderSurface.requestFocusInWindow();
         }
     }
 

@@ -1,13 +1,15 @@
 package src.entity;
 
+import java.util.HashMap;
+import java.util.Map;
 import src.entity.Gun;
 
 public class Player {
     private static final double DIRECTION_EPSILON = 0.0001;
     private static final double DASH_SPEED = 38.0;
-    private static final int DASH_COOLDOWN_TICKS = 90;
+    private static final int BASE_DASH_COOLDOWN_TICKS = 90;
     private static final double BASE_CRITICAL_CHANCE = 0.05;
-    private static final double CRITICAL_DAMAGE_MULTIPLIER = 2.0;
+    private static final double BASE_CRITICAL_DAMAGE_MULTIPLIER = 2.0;
     private static final int MAX_SHIELD_CHARGES = 3;
 
     private double x, y;
@@ -29,14 +31,25 @@ public class Player {
     private LevelingSystem levelingSystem;
     private final double pickupRadius = 65.0;
     private final double attractionRadius = 190.0;
+    private final Map<String, Integer> itemStacks = new HashMap<>();
     private double lastMoveDirectionX;
     private double lastMoveDirectionY;
     private boolean hasMoveDirection;
     private int dashCooldownTicksRemaining;
+    private int dashCooldownTicks = BASE_DASH_COOLDOWN_TICKS;
     private double criticalChance = BASE_CRITICAL_CHANCE;
+    private double criticalDamageMultiplier = BASE_CRITICAL_DAMAGE_MULTIPLIER;
     private int shieldCharges;
     private int pierceCount;
     private int ricochetCount;
+    private double velocityDamageScale;
+    private double ricochetDamageMultiplier = 1.0;
+    private boolean chargedShotsEnabled;
+    private double chargedShotPowerScale;
+    private double pickupRadiusMultiplier = 1.0;
+    private double attractionRadiusMultiplier = 1.0;
+    private double xpGainMultiplier = 1.0;
+    private int timeWarpDurationBonusTicks;
 
     public Player(double startX, double startY) {
         this.x = startX;
@@ -82,7 +95,7 @@ public class Player {
 
         velocityX += lastMoveDirectionX * DASH_SPEED;
         velocityY += lastMoveDirectionY * DASH_SPEED;
-        dashCooldownTicksRemaining = DASH_COOLDOWN_TICKS;
+        dashCooldownTicksRemaining = dashCooldownTicks;
         return true;
     }
 
@@ -211,11 +224,11 @@ public class Player {
     }
 
     public double getPickupRadius() {
-        return pickupRadius;
+        return pickupRadius * pickupRadiusMultiplier;
     }
 
     public double getAttractionRadius() {
-        return attractionRadius;
+        return attractionRadius * attractionRadiusMultiplier;
     }
 
     public int getDashCooldownTicksRemaining() {
@@ -223,14 +236,14 @@ public class Player {
     }
 
     public int getDashCooldownTicks() {
-        return DASH_COOLDOWN_TICKS;
+        return dashCooldownTicks;
     }
 
     public double getDashChargeRatio() {
-        if (DASH_COOLDOWN_TICKS <= 0) {
+        if (dashCooldownTicks <= 0) {
             return 1.0;
         }
-        return 1.0 - (dashCooldownTicksRemaining / (double) DASH_COOLDOWN_TICKS);
+        return 1.0 - (dashCooldownTicksRemaining / (double) dashCooldownTicks);
     }
 
     public boolean isDashReady() {
@@ -279,6 +292,20 @@ public class Player {
         return gun != null && gun.consumeReloadStarted();
     }
 
+    public int addItemStack(String stackKey) {
+        int nextStacks = getItemStack(stackKey) + 1;
+        itemStacks.put(stackKey, nextStacks);
+        return nextStacks;
+    }
+
+    public int getItemStack(String stackKey) {
+        Integer stacks = itemStacks.get(stackKey);
+        if (stacks == null) {
+            return 0;
+        }
+        return stacks;
+    }
+
     public void increaseMaxHealth(int amount) {
         if (amount <= 0) {
             return;
@@ -299,7 +326,7 @@ public class Player {
     }
 
     public double getCriticalDamageMultiplier() {
-        return CRITICAL_DAMAGE_MULTIPLIER;
+        return criticalDamageMultiplier;
     }
 
     public void increaseCriticalChance(double amount) {
@@ -307,6 +334,13 @@ public class Player {
             return;
         }
         criticalChance = Math.min(1.0, criticalChance + amount);
+    }
+
+    public void increaseCriticalDamageMultiplier(double amount) {
+        if (amount <= 0.0) {
+            return;
+        }
+        criticalDamageMultiplier += amount;
     }
 
     public int getShieldCharges() {
@@ -349,6 +383,96 @@ public class Player {
             return;
         }
         ricochetCount += amount;
+    }
+
+    public void increaseVelocityDamageScale(double amount) {
+        if (amount <= 0.0) {
+            return;
+        }
+        velocityDamageScale += amount;
+    }
+
+    public void increasePickupAndAttractionRadius(double pickupMultiplier, double attractionMultiplier) {
+        if (pickupMultiplier > 0.0) {
+            pickupRadiusMultiplier *= pickupMultiplier;
+        }
+        if (attractionMultiplier > 0.0) {
+            attractionRadiusMultiplier *= attractionMultiplier;
+        }
+    }
+
+    public void increaseXpGainMultiplier(double amount) {
+        if (amount <= 0.0) {
+            return;
+        }
+        xpGainMultiplier += amount;
+    }
+
+    public double getXpGainMultiplier() {
+        return xpGainMultiplier;
+    }
+
+    public void reduceDashCooldown(double factor) {
+        if (factor <= 0.0 || factor >= 1.0) {
+            return;
+        }
+        dashCooldownTicks = Math.max(24, (int) Math.round(dashCooldownTicks * factor));
+        dashCooldownTicksRemaining = Math.min(dashCooldownTicksRemaining, dashCooldownTicks);
+    }
+
+    public void addTimeWarpDurationBonus(int ticks) {
+        if (ticks <= 0) {
+            return;
+        }
+        timeWarpDurationBonusTicks += ticks;
+    }
+
+    public int getTimeWarpDurationTicks(int baseDurationTicks) {
+        return Math.max(1, baseDurationTicks + timeWarpDurationBonusTicks);
+    }
+
+    public double getRicochetDamageMultiplier() {
+        return ricochetDamageMultiplier;
+    }
+
+    public void increaseRicochetDamageMultiplier(double amount) {
+        if (amount <= 0.0) {
+            return;
+        }
+        ricochetDamageMultiplier += amount;
+    }
+
+    public void enableChargedShots(double powerScaleBonus) {
+        chargedShotsEnabled = true;
+        chargedShotPowerScale += Math.max(0.0, powerScaleBonus);
+    }
+
+    public boolean hasChargedShots() {
+        return chargedShotsEnabled;
+    }
+
+    public void applyShotPerks(Pellet pellet, double chargeRatio) {
+        applyVelocityDamage(pellet);
+        applyChargedShot(pellet, chargeRatio);
+    }
+
+    private void applyVelocityDamage(Pellet pellet) {
+        if (velocityDamageScale <= 0.0) {
+            return;
+        }
+        pellet.multiplyDamage(1.0 + (pellet.getSpeed() * velocityDamageScale));
+    }
+
+    private void applyChargedShot(Pellet pellet, double chargeRatio) {
+        if (!chargedShotsEnabled || chargeRatio <= 0.0) {
+            return;
+        }
+
+        double clampedCharge = Math.max(0.0, Math.min(1.0, chargeRatio));
+        double scale = Math.max(1.0, chargedShotPowerScale);
+        pellet.multiplyDamage(1.0 + (2.0 * clampedCharge * scale));
+        pellet.multiplySize(1.0 + (1.6 * clampedCharge));
+        pellet.multiplyKnockback(1.0 + clampedCharge);
     }
 
     private void updateLastMoveDirection(boolean upPressed, boolean downPressed, boolean leftPressed,

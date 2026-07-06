@@ -30,6 +30,9 @@ public class InputHandler implements KeyListener, MouseMotionListener, MouseList
             case LEVEL_UP:
                 handleUpgradeKey(code);
                 return;
+            case ITEM_CHEST:
+                handleUpgradeKey(code);
+                return;
             case GAME_OVER:
                 handleGameOverKey(code);
                 return;
@@ -80,14 +83,8 @@ public class InputHandler implements KeyListener, MouseMotionListener, MouseList
                 || code == KeyEvent.VK_RIGHT) {
             game.getUpgradeScreen().moveSelection(1);
             game.playUiClick();
-        } else if (code == KeyEvent.VK_1) {
-            game.getUpgradeScreen().select(0);
-            game.getUpgradeScreen().confirm(game, game.getPlayer());
-        } else if (code == KeyEvent.VK_2) {
-            game.getUpgradeScreen().select(1);
-            game.getUpgradeScreen().confirm(game, game.getPlayer());
-        } else if (code == KeyEvent.VK_3) {
-            game.getUpgradeScreen().select(2);
+        } else if (code >= KeyEvent.VK_1 && code <= KeyEvent.VK_9) {
+            game.getUpgradeScreen().select(code - KeyEvent.VK_1);
             game.getUpgradeScreen().confirm(game, game.getPlayer());
         } else if (code == KeyEvent.VK_ENTER || code == KeyEvent.VK_SPACE) {
             game.getUpgradeScreen().confirm(game, game.getPlayer());
@@ -158,6 +155,9 @@ public class InputHandler implements KeyListener, MouseMotionListener, MouseList
             case LEVEL_UP:
                 game.getUpgradeScreen().setPointer(e.getX(), e.getY());
                 break;
+            case ITEM_CHEST:
+                game.getUpgradeScreen().setPointer(e.getX(), e.getY());
+                break;
             case GAME_OVER:
                 game.getGameOverScreen().setPointer(e.getX(), e.getY());
                 break;
@@ -183,6 +183,9 @@ public class InputHandler implements KeyListener, MouseMotionListener, MouseList
                 game.getGameOverScreen().handleClick(e.getX(), e.getY(), game);
                 break;
             case LEVEL_UP:
+                game.getUpgradeScreen().handleClick(e.getX(), e.getY(), game, game.getPlayer());
+                break;
+            case ITEM_CHEST:
                 game.getUpgradeScreen().handleClick(e.getX(), e.getY(), game, game.getPlayer());
                 break;
             case PAUSED:

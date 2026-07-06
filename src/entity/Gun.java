@@ -198,6 +198,41 @@ public abstract class Gun {
         currentAmmo = Math.min(magazineSize, currentAmmo + amount);
     }
 
+    public void multiplyBulletSpeed(double multiplier) {
+        if (multiplier <= 0.0) {
+            return;
+        }
+        bulletSpeed *= multiplier;
+    }
+
+    public void multiplyBulletSize(double multiplier) {
+        if (multiplier <= 0.0) {
+            return;
+        }
+        bulletSize = Math.max(1.0, bulletSize * multiplier);
+    }
+
+    public void multiplySpread(double multiplier) {
+        if (multiplier <= 0.0) {
+            return;
+        }
+        spread *= multiplier;
+    }
+
+    public void increaseBulletsPerShot(int amount) {
+        if (amount <= 0) {
+            return;
+        }
+        bulletsPerShot += amount;
+    }
+
+    public void multiplyKnockback(double multiplier) {
+        if (multiplier <= 0.0) {
+            return;
+        }
+        knockback *= multiplier;
+    }
+
     private int getReloadDisplayAmmo() {
         if (!reloading || reloadTicksTotal <= 0) {
             return currentAmmo;
